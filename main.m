@@ -3,75 +3,109 @@ AttachSpec("ZetaFunction/ZetaFunction.spec");
 Attach("MonomialSequence.m");
 Z := IntegerRing();
 Q := RationalField();
-prt:=procedure(L)printf"[";for i->l in L do printf"%o%o",l,i lt#L select", "else"";end for;printf"]\n";end procedure;
+prt:=procedure(L)printf"[";for i->l in L do printf"%o%o",&cat Split(Sprintf("%o",l),"*"),i lt#L select", "else"";end for;printf"]\n";end procedure;
 
 R := Q;
-assumeNonzero:={R| };
 P<x,y> := LocalPolynomialRing(R,2);
-//f := y^6 - x^7;
-//f := x^5 + y^5 + x^2*y^2;
-f := (y^2-x^3)^5 + x^18;
-//maxContact := [P| x, y, y^2-x^3, f ];
+f := (y^2-x^3)^5 + x^18; // 10-15-36
 maxContact := [P| x, y, y^2-x^3, f ];
 
-//printf "\nSemigroup %o\n", SemiGroup(f);
+//f := y^6 - x^7;
+//f := x^5 + y^5 + x^2*y^2;
+
+mu := MilnorNumber(f);
+printf "\nSemigroup %o\n", SemiGroup(f);
+printf "mu=%o\n", mu;
 printf "f = %o\n", f;
-printf "mu=%o\n", MilnorNumber(f);
 printf "\n";
 
-// L_all, sigma_all := ZetaFunctionStratification(f : assumeNonzero:=assumeNonzero, verboseLevel:="default");
-
-//chain := FiltrationRupture(f,1);
-chain := Filtration(f);
-
-//print Universe(chain[1][1]);
-
-for i->tup in chain do
-	generators, clusterIntersection := Explode(tup);
-	printf "KK_i=%-3o ", clusterIntersection;
-	//printf "\n";
-	//printf "%o\n", i;
-	//for j->gen in generators do
-	//	printf (j eq 1) select "[" else ", ";
-	//	printf "%o", &cat Split(Sprintf("%o", gen), "*");
-	//end for;
-	//printf "]\n";
-	
-	ChangeUniverse(~generators, P);
-	SNice, extras := MonomialSequence(generators, maxContact);
-	prt(SNice);
-	for i->elt in extras do
-		printf "g%o = %o\n", i, elt;
-	end for;
-	
-	printf "\n";
-end for;
-
+// Calculate
+filtration := Filtration(f : N:=mu);
 multipliers := MultiplierIdeals(f);
-for i->tup in multipliers do
-	generators, lambda := Explode(tup);
-	printf "JN=%-8o ", lambda;
-	//printf "\n";
-	//printf "%o\n", i;
-	//for j->gen in generators do
-	//	printf (j eq 1) select "[" else ", ";
-	//	printf "%o", &cat Split(Sprintf("%o", gen), "*");
-	//end for;
-	//printf "]\n";
-	SNice, extras := MonomialSequence(generators, maxContact);
-	prt(SNice);
-	for i->elt in extras do
-		printf "g%o = %o\n", i, elt;
-	end for;
+//filtrationRup := FiltrationRupture(f,1);
 
-	printf "\n";
+// Prepare
+
+//print Universe(filtration[1][1]);
+filtration := [<ChangeUniverse(gen_and_int[1],P), gen_and_int[2]> : gen_and_int in filtration];
+filtrationIdeals := [];
+filtrationIdealToInt := AssociativeArray();
+filtrationIdealToSequence := AssociativeArray();
+for gen_and_int in filtration do
+	generators, intersection := Explode(gen_and_int);
+	I := ideal<P| generators>;
+	Append(~filtrationIdeals, I);
+	filtrationIdealToInt[I] := intersection;
+	filtrationIdealToSequence[I] := generators;
+end for;
+
+if multipliers[1][2] eq 0 then Remove(~multipliers, 1); end if; // remove JN=0
+multiplierIdeals := [];
+multiplierIdealToJN := AssociativeArray();
+multiplierIdealToSequence := AssociativeArray();
+for gen_and_JN in multipliers do
+	generators, JN := Explode(gen_and_JN);
+	I := ideal<P| generators>;
+	Append(~multiplierIdeals, I);
+	multiplierIdealToJN[I] := JN;
+	multiplierIdealToSequence[I] := generators;
 end for;
 
 
+// Compare
+
+print "Columns:";
+print "- Filtration ideal is a multiplier ideal (y/NO)";
+print "- Intersection multiplicity of the clusters?";
+print "- Jumping number, or ideal that is not a multiplier ideal";
+printf "\n";
+
+multiplierIdealsCopy := multiplierIdeals;
+for I in filtrationIdeals do
+	if I in multiplierIdealsCopy then
+		printf "   Y %-4o %o\n", filtrationIdealToInt[I], multiplierIdealToJN[I];
+		Exclude(~multiplierIdealsCopy, I);
+	else
+		printf "NO   %-4o ", filtrationIdealToInt[I];
+		if false then
+			//IndentPush();
+			SNice, extras := MonomialSequence(filtrationIdealToSequence[I], maxContact);
+			prt(SNice); for i->elt in extras do printf "g%o = %o\n", i, elt; end for;
+			//IndentPop();
+		end if;
+		printf "\n";
+	end if;
+end for;
+printf "\n\nMultiplier ideals that are not in the filtration:\n\n";
+for I in multiplierIdealsCopy do
+	printf "JN=%-8o ", multiplierIdealToJN[I];
+	SNice, extras := MonomialSequence(multiplierIdealToSequence[I], maxContact);
+	prt(SNice); for i->elt in extras do printf "g%o = %o\n", i, elt; end for;
+end for;
+
+if false then
+	// Print filtration
+	for i->tup in filtration do
+		generators, intersection := Explode(tup);
+		printf "KK_i=%-4o ", intersection;
+		SNice, extras := MonomialSequence(generators, maxContact);
+		prt(SNice); for i->elt in extras do printf "g%o = %o\n", i, elt; end for;
+	end for;
+	printf "\n";
+	// Print multipliers
+	for i->tup in multipliers do
+		generators, JN := Explode(tup);
+		printf "JN=%-8o ", JN;
+		SNice, extras := MonomialSequence(generators, maxContact);
+		prt(SNice); for i->elt in extras do printf "g%o = %o\n", i, elt; end for;
+	end for;
+	printf "\n";
+end if;
 
 
 
-printf "\nFinished\n";
+
+printf "\n\nFinished\n";
 quit;
 
 // R<A_43,A_34,A_44,A_52,A_53,A_54> := RationalFunctionField(Q,6);
