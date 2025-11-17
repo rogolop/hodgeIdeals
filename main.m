@@ -1,33 +1,74 @@
 AttachSpec("SingularitiesDim2/IntegralClosureDim2.spec");
 AttachSpec("ZetaFunction/ZetaFunction.spec");
 Attach("MonomialSequence.m");
+Attach("ExampleCurve.m");
 Z := IntegerRing();
 Q := RationalField();
-prt:=procedure(L)printf"[";for i->l in L do printf"%o%o",&cat Split(Sprintf("%o",l),"*"),i lt#L select", "else"";end for;printf"]\n";end procedure;
 
-R := Q;
-P<x,y> := LocalPolynomialRing(R,2);
-f := (y^2-x^3)^5 + x^18; // 10-15-36
-maxContact := [P| x, y, y^2-x^3, f ];
+//######################
+//### Input/settings
+//######################
 
-//f := y^6 - x^7;
-//f := x^5 + y^5 + x^2*y^2;
+hideCoinciding := true;
+printCoincidingIdeals := false;
+printExtraFiltrationIdeals := true;
+printMissingMultiplierIdeals := true;
+case 2:
+	when 1:
+		semigroup := [10,15,36]; //[8,12,26,53]; //[6,7]; //[10,15,36];
+	when 2:
+		// a>=2, b>=a+1, c>=2, d>=1, {a,b,c} pairwise coprime, {c,d} coprime
+		abcd := [2,3,5,2]; //[3,8,7,1]; //[4,7,3,1];
+end case;
 
+//P<x,y> := LocalPolynomialRing(Q,2); R:=Q;
+//f := (y^2-x^3)^5 + x^18; // 10-15-36
+//maxContact := [P| x, y, y^2-x^3, f ];
+//semigroup := SemiGroup(f);
+
+//######################
+//### Everything else
+//######################
+
+if not assigned f then
+	if assigned abcd then 
+		a,b,c,d := Explode(abcd); semigroup := [a*c,b*c,a*b*(c+d)];
+	end if;
+	f, maxContact := ExampleCurve(semigroup);
+	P := Parent(f); x:=P.1; y:=P.2; R := BaseRing(P);
+end if;
+
+printf "\nSemigroup %o\n", semigroup;
+g := #semigroup -1;
 mu := MilnorNumber(f);
-printf "\nSemigroup %o\n", SemiGroup(f);
 printf "mu=%o\n", mu;
 printf "f = %o\n", f;
+print "maxContact ="; print maxContact;
 printf "\n";
 
+prt:=procedure(L)printf"[";for i->l in L do printf"%o%o",&cat Split(Sprintf("%o",l),"*"),i lt#L select", "else"";end for;printf"]";end procedure;
+
 // Calculate
-filtration := Filtration(f : N:=mu);
+
+case 1:
+	when 1:
+		filtration := Filtration(f : N:=mu);
+		filtration := [<ChangeUniverse(gen_and_int[1],P), gen_and_int[2]> : gen_and_int in filtration];
+	when 2:
+		filtration := [];
+		for i in [1..g] do
+			filtration_i := FiltrationRupture(f,i : N:=mu);
+			filtration_i := [<ChangeUniverse(gen_and_int[1],P), gen_and_int[2]> : gen_and_int in filtration_i];
+			for elt in filtration_i do
+				if elt notin filtration then Append(~filtration, elt); end if;
+			end for;
+		end for;
+end case;
 multipliers := MultiplierIdeals(f);
-//filtrationRup := FiltrationRupture(f,1);
 
 // Prepare
 
 //print Universe(filtration[1][1]);
-filtration := [<ChangeUniverse(gen_and_int[1],P), gen_and_int[2]> : gen_and_int in filtration];
 filtrationIdeals := [];
 filtrationIdealToInt := AssociativeArray();
 filtrationIdealToSequence := AssociativeArray();
@@ -51,11 +92,10 @@ for gen_and_JN in multipliers do
 	multiplierIdealToSequence[I] := generators;
 end for;
 
-
-// Compare
+// Compare filtration vs multipliers
 
 print "Columns:";
-print "- Filtration ideal is a multiplier ideal (y/NO)";
+print "- Filtration ideal is a multiplier ideal (Y/NO)";
 print "- Intersection multiplicity of the clusters?";
 print "- Jumping number, or ideal that is not a multiplier ideal";
 printf "\n";
@@ -63,25 +103,46 @@ printf "\n";
 multiplierIdealsCopy := multiplierIdeals;
 for I in filtrationIdeals do
 	if I in multiplierIdealsCopy then
-		printf "   Y %-4o %o\n", filtrationIdealToInt[I], multiplierIdealToJN[I];
 		Exclude(~multiplierIdealsCopy, I);
+		if not hideCoinciding then
+			printf "   Y %-4o %-8o ", filtrationIdealToInt[I], multiplierIdealToJN[I];
+			if printCoincidingIdeals then
+				SNice, extras := MonomialSequence(filtrationIdealToSequence[I], maxContact);
+				prt(SNice); for i->elt in extras do printf "\ng%o = %o", i, elt; end for;
+			end if;
+			printf "\n";
+		end if;
 	else
 		printf "NO   %-4o ", filtrationIdealToInt[I];
-		if false then
-			//IndentPush();
+		// printf "        ";
+		if printExtraFiltrationIdeals then
 			SNice, extras := MonomialSequence(filtrationIdealToSequence[I], maxContact);
-			prt(SNice); for i->elt in extras do printf "g%o = %o\n", i, elt; end for;
-			//IndentPop();
+			prt(SNice); for i->elt in extras do printf "\ng%o = %o", i, elt; end for;
+			
+			printf "\n"; print LogResolution(I);
 		end if;
 		printf "\n";
 	end if;
 end for;
 printf "\n\nMultiplier ideals that are not in the filtration:\n\n";
-for I in multiplierIdealsCopy do
-	printf "JN=%-8o ", multiplierIdealToJN[I];
-	SNice, extras := MonomialSequence(multiplierIdealToSequence[I], maxContact);
-	prt(SNice); for i->elt in extras do printf "g%o = %o\n", i, elt; end for;
-end for;
+if #multiplierIdealsCopy eq 0 then
+	printf "None\n";
+else
+	for I in multiplierIdealsCopy do
+		printf "JN=%-8o ", multiplierIdealToJN[I];
+		if printMissingMultiplierIdeals then
+			SNice, extras := MonomialSequence(multiplierIdealToSequence[I], maxContact);
+			prt(SNice); for i->elt in extras do printf "\ng%o = %o", i, elt; end for;
+			
+			printf "\n"; print LogResolution(I);
+		end if;
+		printf "\n";
+	end for;
+end if;
+
+printf "\nTotal number of missing multiplier ideals: %o\n", #multiplierIdealsCopy;
+
+// Print all
 
 if false then
 	// Print filtration
@@ -89,16 +150,18 @@ if false then
 		generators, intersection := Explode(tup);
 		printf "KK_i=%-4o ", intersection;
 		SNice, extras := MonomialSequence(generators, maxContact);
-		prt(SNice); for i->elt in extras do printf "g%o = %o\n", i, elt; end for;
+		prt(SNice); for i->elt in extras do printf "\ng%o = %o", i, elt; end for;
 	end for;
+	printf "\n";
 	printf "\n";
 	// Print multipliers
 	for i->tup in multipliers do
 		generators, JN := Explode(tup);
 		printf "JN=%-8o ", JN;
 		SNice, extras := MonomialSequence(generators, maxContact);
-		prt(SNice); for i->elt in extras do printf "g%o = %o\n", i, elt; end for;
+		prt(SNice); for i->elt in extras do printf "\ng%o = %o", i, elt; end for;
 	end for;
+	printf "\n";
 	printf "\n";
 end if;
 
@@ -107,35 +170,4 @@ end if;
 
 printf "\n\nFinished\n";
 quit;
-
-// R<A_43,A_34,A_44,A_52,A_53,A_54> := RationalFunctionField(Q,6);
-// assumeNonzero:={R| };
-// P<x,y> := LocalPolynomialRing(R,2);
-// f := y^6 - x^7 + A_52*x^5*y^2 + A_43*x^4*y^3 + A_34*x^3*y^4 + A_44*x^4*y^4 + A_53*x^5*y^3 + A_54*x^5*y^4;
-
-// R<t1,t4,t6,t11> := RationalFunctionField(Q,4);
-// assumeNonzero:={R| };
-// P<x,y> := LocalPolynomialRing(R,2);
-// f := 1/7*x^7 + 1/5*y^5 -t1*x^3*y^3 -t4*x^5*y^2 -t6*x^4*y^3 -t11*x^5*y^3;
-
-// R<t1,t2,t6,t10> := RationalFunctionField(Q,4);
-// assumeNonzero:={R| };
-// P<x,y> := LocalPolynomialRing(R,2);
-// f := -1/9*x^9 -1/4*y^4 +t1*x^7*y +t2*x^5*y^2 +t6*x^6*y^2 +t10*x^7*y^2;
-
-// R<u1,u2,u3,u8,u9,u15> := RationalFunctionField(Q,6);
-// assumeNonzero:={R| };
-// P<x,y> := LocalPolynomialRing(R,2);
-// f := x^6 +y^7 +u3*x^4*y^3 +u2*x^3*y^4 +u9*x^4*y^4 +u1*x^2*y^5 +u8*x^3*y^5 +u15*x^4*y^5;
-
-// R<t0,t1,t2,t3,t4,t5,t6,t7,t8,t9,t10,t11,t12,t13,t14,t15,t16,t17> := RationalFunctionField(Q,18);
-// assumeNonzero:={R| t0};
-// P<x,y> := LocalPolynomialRing(R,2);
-// f :=  (-x^5*y^4 + t17*x^3*y^5)*(t0 + t3*x + t6*x^2 + t9*x^3 + t11*x^4 + t13*x^5 + t7*y + t10*x*y + t12*x^2*y + t14*x^3*y + t15*x^4*y + t16*x^5*y)^2 + (-x^7 + t1*x^5*y + t4*x^6*y + t2*x^3*y^2 + t5*x^4*y^2 + t8*x^5*y^2 + y^3)^2;
-
-//R<t0,t1,t2,t17> := RationalFunctionField(Q,4);
-//assumeNonzero:={R| t0};
-//P<x,y> := LocalPolynomialRing(R,2);
-//f :=  (-x^5*y^4 + t17*x^3*y^5)*(t0)^2 + (-x^7 + t1*x^5*y + y^3)^2;
-//f :=  (-x^5*y^4 + t17*x^3*y^5)*(t0)^2 + (-x^7 + t1*x^5*y + t2*x^3*y^2 + y^3)^2;
 

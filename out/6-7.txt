@@ -1,0 +1,46 @@
+Magma V2.28-6     Mon Nov 17 2025 16:54:24 on margaret [Seed = 3300322813]
+Type ? for help.  Type <Ctrl>-D to quit.
+
+Loading file "/home/roger/.local/tmp/magma_2025-11-17_16-54-24_356132361/hodgeI\
+deals/main.m"
+
+Semigroup [ 6, 7 ]
+mu=30
+f = -x^7 + y^6
+maxContact =
+[
+    x,
+    y,
+    -x^7 + y^6
+]
+
+Columns:
+- Filtration ideal is a multiplier ideal (y/NO)
+- Intersection multiplicity of the clusters?
+- Jumping number, or ideal that is not a multiplier ideal
+
+   Y 6    13/42
+   Y 7    19/42
+   Y 12   10/21
+   Y 13   25/42
+   Y 14   13/21
+   Y 18   9/14
+   Y 19   31/42
+   Y 20   16/21
+   Y 21   11/14
+   Y 24   17/21
+   Y 25   37/42
+   Y 26   19/21
+   Y 27   13/14
+   Y 28   20/21
+   Y 30   41/42
+
+
+Multiplier ideals that are not in the filtration:
+None
+
+
+Finished
+
+Total time: 0.020 seconds, Total memory usage: 32.09MB
+Exit status: EXIT (0)

@@ -1,12 +1,19 @@
-Magma V2.28-6     Mon Nov 17 2025 12:59:42 on margaret [Seed = 2365517460]
+Magma V2.28-6     Mon Nov 17 2025 16:52:56 on margaret [Seed = 1344436353]
 Type ? for help.  Type <Ctrl>-D to quit.
 
-Loading file "/home/roger/.local/tmp/magma_2025-11-17_12-59-42_503790611/hodgeI\
+Loading file "/home/roger/.local/tmp/magma_2025-11-17_16-52-56_198118024/hodgeI\
 deals/main.m"
 
 Semigroup [ 10, 15, 36 ]
 mu=150
-f = -x^15 + x^18 + 5*x^12*y^2 - 10*x^9*y^4 + 10*x^6*y^6 - 5*x^3*y^8 + y^10
+f = x^15 - x^18 - 5*x^12*y^2 + 10*x^9*y^4 - 10*x^6*y^6 + 5*x^3*y^8 - y^10
+maxContact =
+[
+    x,
+    y,
+    -x^3 + y^2,
+    x^15 - x^18 - 5*x^12*y^2 + 10*x^9*y^4 - 10*x^6*y^6 + 5*x^3*y^8 - y^10
+]
 
 Columns:
 - Filtration ideal is a multiplier ideal (y/NO)
@@ -91,7 +98,7 @@ NO   144
 
 
 Multiplier ideals that are not in the filtration:
-
+None
 
 
 Finished

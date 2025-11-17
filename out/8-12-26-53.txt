@@ -1,0 +1,77 @@
+Magma V2.28-6     Mon Nov 17 2025 16:55:31 on margaret [Seed = 1245209395]
+Type ? for help.  Type <Ctrl>-D to quit.
+
+Loading file "/home/roger/.local/tmp/magma_2025-11-17_16-55-31_585898359/hodgeI\
+deals/main.m"
+
+Semigroup [ 8, 12, 26, 53 ]
+mu=84
+f = x^12 - x^13 - 2*x^11*y - 4*x^9*y^2 + 2*x^10*y^2 + 4*x^8*y^3 + 6*x^6*y^4 - 
+2*x^5*y^5 - 4*x^3*y^6 + y^8
+maxContact =
+[
+    x,
+    y,
+    -x^3 + y^2,
+    -x^13 + x^10*y^2,
+    x^12 - x^13 - 2*x^11*y - 4*x^9*y^2 + 2*x^10*y^2 + 4*x^8*y^3 + 6*x^6*y^4 - 
+        2*x^5*y^5 - 4*x^3*y^6 + y^8
+]
+
+Columns:
+- Filtration ideal is a multiplier ideal (y/NO)
+- Intersection multiplicity of the clusters?
+- Jumping number, or ideal that is not a multiplier ideal
+
+   Y 8    5/24
+   Y 12   15/52
+   Y 16   17/52
+   Y 20   19/52
+   Y 24   21/52
+   Y 26   23/52
+   Y 28   11/24
+   Y 32   25/52
+   Y 34   55/106
+   Y 36   57/106
+   Y 38   59/106
+   Y 40   61/106
+   Y 42   63/106
+   Y 44   65/106
+   Y 46   67/106
+   Y 48   69/106
+   Y 50   71/106
+   Y 52   73/106
+   Y 53   75/106
+   Y 54   17/24
+   Y 56   77/106
+   Y 58   79/106
+   Y 60   81/106
+   Y 61   83/106
+   Y 62   41/52
+   Y 64   85/106
+   Y 65   87/106
+   Y 66   43/52
+   Y 68   89/106
+   Y 69   91/106
+   Y 70   45/52
+   Y 72   93/106
+   Y 73   95/106
+   Y 74   47/52
+   Y 76   97/106
+   Y 77   99/106
+   Y 78   49/52
+   Y 79   101/106
+   Y 80   23/24
+   Y 81   103/106
+   Y 82   51/52
+   Y 84   105/106
+
+
+Multiplier ideals that are not in the filtration:
+None
+
+
+Finished
+
+Total time: 0.220 seconds, Total memory usage: 32.09MB
+Exit status: EXIT (0)
