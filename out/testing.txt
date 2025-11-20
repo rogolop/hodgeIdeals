@@ -1,7 +1,7 @@
-Magma V2.28-6     Thu Nov 20 2025 16:22:36 on margaret [Seed = 1228871658]
+Magma V2.28-6     Thu Nov 20 2025 16:23:17 on margaret [Seed = 3885087002]
 Type ? for help.  Type <Ctrl>-D to quit.
 
-Loading file "/home/roger/.local/tmp/magma_2025-11-20_16-22-36_752448490/hodgeI\
+Loading file "/home/roger/.local/tmp/magma_2025-11-20_16-23-17_003674899/hodgeI\
 deals/main.m"
 
 Semigroup [ 10, 15, 42 ]

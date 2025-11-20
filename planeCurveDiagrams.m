@@ -1,13 +1,13 @@
-intrinsic dualGraphPlottingMatrix(proximityMatrix::Mtrx) -> Mtrx
+intrinsic diagramDataFromProximity(proximityMatrix::Mtrx) -> Tup
 	{
 		TODO
 	}
 	Z := Integers();
 	numPoints := Ncols(proximityMatrix);
-	N := -Transpose(proximityMatrix) * proximityMatrix;
-	M := N; for i in [1..numPoints] do M[i][i] := 0; end for;
 	
 	// Calculate dual graph
+	N := -Transpose(proximityMatrix) * proximityMatrix;
+	M := N; for i in [1..numPoints] do M[i][i] := 0; end for;
 	children := [];
 	parent := [Z| ];
 	visited := {Z| }; pending := {Z| 1}; // temp
@@ -45,15 +45,8 @@ intrinsic dualGraphPlottingMatrix(proximityMatrix::Mtrx) -> Mtrx
 			dualGraphMatrix[1+j][i] := pt2;
 		end for;
 	end for;
-	return dualGraphMatrix;
-end intrinsic;
-
-intrinsic enriquesPlottingMatrix(proximityMatrix::Mtrx) -> Mtrx
-	{
-		TODO
-	}
-	Z := Integers();
-	numPoints := Ncols(proximityMatrix);
+	
+	// Calculate Enriques diagram
 	isFree := [ &+Eltseq(proximityMatrix[pt]) ge 0 : pt in [1..numPoints]];
 	enriques := ZeroMatrix(Z, 2*numPoints);
 	i:=1; j:=1; di:=0; dj:=1;
@@ -78,6 +71,7 @@ intrinsic enriquesPlottingMatrix(proximityMatrix::Mtrx) -> Mtrx
 			if lastProximateTo ne proximateTo then
 				di, dj := Explode(<dj,di>);
 			end if;
+			lastProximateTo := proximateTo;
 			lastWasSatellite := true;
 		end if;
 		i +:= di; j +:= dj;
@@ -86,16 +80,20 @@ intrinsic enriquesPlottingMatrix(proximityMatrix::Mtrx) -> Mtrx
 	actualHeight := Max([Z| k : k in [1..Nrows(enriques)] | &+Eltseq(enriques[k]) ne 0]);
 	actualWidth := Max([Z| k : k in [1..Ncols(enriques)] | &+Eltseq(Transpose(enriques)[k]) ne 0]);
 	enriques := Submatrix(enriques, 1,1, actualHeight, actualWidth);
-	return enriques;
+	
+	return <dualGraphMatrix, enriques>;
 end intrinsic;
 
-intrinsic printAnnotatedDualGraph(dualGraphMatrix::Mtrx, annotations::Any : vertSep:="", horizSep:="───")
+intrinsic printAnnotatedDualGraph(diagramData::Tup, annotations::Any : vertSep:="│", horizSep:="───")
 	{
 		TODO
 	}
+	dualGraphMatrix, enriques := Explode(diagramData);
 	Z := Integers();
 	for j in [1..Ncols(dualGraphMatrix)] do
-		if j gt 1 then printf vertSep; end if;
+		if j gt 1 then printf vertSep; else
+			if vertSep eq "│" then printf "╷"; end if;
+		end if;
 		for i in [1..Nrows(dualGraphMatrix)] do
 			pt := dualGraphMatrix[i][j];
 			if pt eq 0 then break; end if;
@@ -106,10 +104,11 @@ intrinsic printAnnotatedDualGraph(dualGraphMatrix::Mtrx, annotations::Any : vert
 	end for;
 end intrinsic;
 
-intrinsic printAnnotatedEnriquesDiagram(enriques::Mtrx, annotations::Any)
+intrinsic printAnnotatedEnriquesDiagram(diagramData::Tup, annotations::Any)
 	{
 		TODO
 	}
+	dualGraphMatrix, enriques := Explode(diagramData);
 	Z := Integers();
 	maxLabelSize := Max([Z| #Sprintf("%o",ann) : ann in Eltseq(annotations)]);
 	for i in [1..Nrows(enriques)] do
@@ -145,6 +144,65 @@ intrinsic printAnnotatedEnriquesDiagram(enriques::Mtrx, annotations::Any)
 	end for;
 end intrinsic;
 
+intrinsic printAnnotatedEnriquesDiagramAndDualGraph(diagramData::Tup, annotations::Any : vertSep:="│", horizSep:="───")
+	{
+		TODO
+	}
+	dualGraphMatrix, enriques := Explode(diagramData);
+	Z := Integers();
+	maxLabelSize := Max([Z| #Sprintf("%o",ann) : ann in Eltseq(annotations)]);
+	for i in [1..Max(Nrows(enriques), Ncols(dualGraphMatrix))] do
+		if i le Nrows(enriques) then
+			for j in [1..Ncols(enriques)] do
+				case enriques[i][j]:
+				when 0:
+					printf " " cat " "^maxLabelSize;
+				when -1:
+					printf "─"^Ceiling((maxLabelSize)/ 2) cat "╯" cat
+						" "^Floor((maxLabelSize)/ 2);
+				when -2:
+					printf " "^Ceiling((maxLabelSize)/ 2) cat "│" cat
+						" "^Floor((maxLabelSize)/ 2);
+				when -3:
+					printf " "^Ceiling((maxLabelSize)/ 2) cat "╭" cat
+						"─"^Floor((maxLabelSize)/ 2);
+				else:
+					ann := Sprintf("%o",annotations[enriques[i][j]]);
+					prefix := " ";
+					if j gt 1 then
+						if i eq 1 then
+							prefix := "~";
+						else
+							if enriques[i][j-1] gt 0 then
+								prefix := "─";
+							end if;
+						end if;
+					end if;
+					printf "%o%o", &cat[prefix:k in [1..1+maxLabelSize-#ann]], ann;
+				end case;
+			end for;
+		else
+			for j in [1..Ncols(enriques)] do
+				printf " " cat " "^maxLabelSize;
+			end for;
+		end if;
+		printf "    ";
+		
+		if i le Ncols(dualGraphMatrix) then
+			if i gt 1 then printf vertSep; else
+				if vertSep eq "│" then printf "╷"; end if;
+			end if;
+			for j in [1..Nrows(dualGraphMatrix)] do
+				pt := dualGraphMatrix[j][i];
+				if pt eq 0 then break; end if;
+				if j gt 1 then printf horizSep; end if;
+				printf "%o", annotations[pt];
+			end for;
+		end if;
+	
+		printf "\n";
+	end for;
+end intrinsic;
 
 
 
