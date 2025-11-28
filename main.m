@@ -11,9 +11,14 @@ Q := RationalField();
 //### Input/settings
 //######################
 
-printOnlyInteresting := true;
-// a>=2, b>=a+1, c>=2, d>=1, {a,b,c} pairwise coprime, {c,d} coprime
-case 100:
+printOnlyInterestingIdeals := false;
+printDiagramsSideBySide    := true;
+printGenerators            := false;
+printExcesses              := true;
+printMultiplicities        := true;
+printValues                := true;
+
+case 103:
 	when 0: semigroup := [10,15,36];
 	when 1: semigroup := [10,15,36];
 	when 2: semigroup := [8,12,26,53];
@@ -23,11 +28,25 @@ case 100:
 	when 6: semigroup := [12,18,39,79];
 	when 7: semigroup := [18,45,93,281];
 	when 8: semigroup := [36,96,292,881];
+	when 9: semigroup := [24,55];
+	when 10: semigroup := [6,14,43];
 	//
+	// a>=2, b>=a+1, c>=2, d>=1, {a,b,c} pairwise coprime, {c,d} coprime
 	when 100: abcd := [2,3,5,2];
 	when 101: abcd := [2,3,5,2];
 	when 102: abcd := [3,8,7,1];
 	when 103: abcd := [4,7,3,1];
+	when 104: abcd := [3,4,5,1];
+	when 105: abcd := [3,5,2,1];
+	//
+	// n1,n2,n3>=2, n1>a, n2>b, n3>c
+	//  pairwise coprime: {n1,n2,n3,a}, {n2,n3,b}, {n3,c}
+	when 200: n1n2n3abc := [2,3,5,7,4,6]; printDiagramsSideBySide := false;
+	when 201: n1n2n3abc := [2,3,5,7,4,6]; printDiagramsSideBySide := false;
+	when 202: n1n2n3abc := [5,3,2,7,5,3]; printDiagramsSideBySide := false;
+	when 203: n1n2n3abc := [ 3, 2, 5, 7, 3, 7 ]; printDiagramsSideBySide := false;
+	when 204: n1n2n3abc := [ 3, 2, 7, 5, 3, 8 ]; printDiagramsSideBySide := false;
+	when 205: n1n2n3abc := [ 3, 2, 5, 7, 3, 6 ]; printDiagramsSideBySide := false;
 	//
 	when 900:
 		// 10-15-36
@@ -46,7 +65,11 @@ end case;
 
 if not assigned f then
 	if assigned abcd then 
-		a,b,c,d := Explode(abcd); semigroup := [a*c,b*c,a*b*(c+d)];
+		a,b,c,d := Explode(abcd);
+		semigroup := [a*c,b*c,a*b*(c+d)];
+	elif assigned n1n2n3abc then
+		n1, n2, n3, a, b, c := Explode(n1n2n3abc);
+		semigroup := [n1*n2*n3, n2*n3*a, n1*n3*a*b, n1*n2*a*b*c];
 	end if;
 	f, maxContact := ExampleCurve(semigroup);
 	P := Parent(f); x:=P.1; y:=P.2; R := BaseRing(P);
@@ -59,10 +82,15 @@ mu := MilnorNumber(f);
 //print "maxContact ="; print maxContact;
 Prf, ef := ProximityMatrix(semigroup);
 numPoints := Ncols(Prf);
-vf := ef * Transpose(Prf^-1);
-N := -Transpose(Prf) * Prf;
+PrfT := Transpose(Prf);
+PrfTInv := PrfT^-1;
+vf := ef * PrfTInv;
+N := -PrfT * Prf;
 excf := ef * Prf; //vf * (-N);
 M := N; for i in [1..numPoints] do M[i][i] := 0; end for;
+
+planeBranchNumbers := PlaneBranchNumbers(semigroup);
+g, c, betas, es, ms, ns, qs, _betas, _ms, Nps, kps, Ns, ks := Explode(planeBranchNumbers);
 
 isFree := [ &+Eltseq(Prf[pt]) ge 0 : pt in [1..numPoints]];
 isRupture := [ (&+Eltseq(M[pt]) ge 3) or (pt eq numPoints and &+Eltseq(M[pt]) ge 2) : pt in [1..numPoints]];
@@ -71,27 +99,46 @@ diagramData := diagramDataFromProximity(Prf); // For plots
 
 printf "\n";
 printf "Semigroup %o\n", semigroup;
-printf "mu=%o\n", mu;
+printf "mu = %o\n", mu;
+printf "n = %o\n", ns;
+printf "m = %o\n", ms;
+printf "_m = %o\n", _ms;
+printf "k = %o\n", kps;
+printf "N = %o\n", Nps;
+for r in [1..g] do
+	printf "Gamma_%o = %o\n", r, [ &*(ns[[(j+2)..(r+1)]]) * _ms[j+1] : j in [0..r] ];
+end for;
+printf "\n";
+printf "f = %o\n",f;
 printf "\n";
 
 printf "Points:\n";
 annotations := [Sprintf("p%o", pt-1) : pt in [1..numPoints]];
-printAnnotatedEnriquesDiagramAndDualGraph(diagramData, annotations);
+printAnnotatedEnriquesDiagramAndDualGraph(diagramData, annotations : sideBySide:=printDiagramsSideBySide);
 printf "\n";
 
 printf "Multiplicities (e):\n";
 annotations := ef[1];
-printAnnotatedEnriquesDiagramAndDualGraph(diagramData, annotations);
+printAnnotatedEnriquesDiagramAndDualGraph(diagramData, annotations : sideBySide:=printDiagramsSideBySide);
 printf "\n";
 
 printf "Values (v):\n";
 annotations := vf[1];
-printAnnotatedEnriquesDiagramAndDualGraph(diagramData, annotations);
+printAnnotatedEnriquesDiagramAndDualGraph(diagramData, annotations : sideBySide:=printDiagramsSideBySide);
 printf "\n";
 
 printf "Calculating jumping numbers...\n";
 printf "Done calculating JN.\n";
 JNbyRupture := JumpingNumbers(semigroup);
+//for r in [1..g] do
+//	printf "(k_%o + 1) = %-4o, ", r, kps[r]+1;
+//	printf "(n_%o + _m_%o)/N_%o = %4o/%-4o = %-9o, ",r,r,r,ns[r+1] + _ms[r+1], Nps[r], (ns[r+1] + _ms[r+1])/Nps[r];
+//	printf "(n_%o + _m_%o) - (k_%o + 1) = %o\n",r,r,r,ns[r+1] + _ms[r+1] - (kps[r]+1);
+//end for;
+
+printf "JN:\n"; print JNbyRupture;
+printf "#JN per rupture divisor: %o\n", [#JN_i : JN_i in JNbyRupture];
+
 JNbyRuptureSets := [Seqset(JNbyRupture[i]) : i in [1..g]];
 allJN := {*Z| *}; // multiset
 for i in [1..g] do
@@ -99,6 +146,7 @@ for i in [1..g] do
 end for;
 repeatedJN := [<JN,m> : JN->m in allJN | m gt 1 ];
 Sort(~repeatedJN);
+printf "\n";
 printf "Repeated JN (#=%o):\n", #repeatedJN;
 for i->tup in repeatedJN do
 	if i gt 1 then printf ", "; end if;
@@ -149,61 +197,44 @@ end case;
 print "Calculating multiplier ideals...";
 multipliers := MultiplierIdeals(f);
 
-print "Calculating log resolutions and related data...";
+print "Preparing data...";
 //print Universe(filtration[1][1]);
 filtrationIdeals := [];
-filtrationIdealToSequence := AssociativeArray();
+idealToSequence := AssociativeArray();
 idealToIntersectionMult := AssociativeArray();
 idealToDimension := AssociativeArray();
-idealToPr := AssociativeArray();
-idealTo_v := AssociativeArray();
-idealTo_e := AssociativeArray();
-idealToExc := AssociativeArray();
+idealToIsMultiplier := AssociativeArray();
 for gen_and_int in filtration do
 	generators, intersection := Explode(gen_and_int);
 	I := ideal<P| generators>;
 	Append(~filtrationIdeals, I);
 	idealToIntersectionMult[I] := intersection;
-	filtrationIdealToSequence[I] := generators;
+	idealToSequence[I] := generators;
 	
-	Pr, v := LogResolution(I);
-	e := v * Transpose(Pr);
-	exc := e * Pr;
-	idealToPr[I] := Pr;
-	idealTo_v[I] := v;
-	idealTo_e[I] := e;
-	idealToExc[I] := exc;
 	INotLocal := ideal<PNotLocal| [Evaluate(gen,[X,Y]) : gen in Basis(I)]>;
 	idealToDimension[I] := Dimension(PNotLocal/INotLocal);
+	
+	idealToIsMultiplier[I] := false;
 end for;
 filtrationIdealsSet := Seqset(filtrationIdeals);
 
 if multipliers[1][2] eq 0 then Remove(~multipliers, 1); end if; // remove JN=0
 multiplierIdeals := [];
 multiplierIdealToJN := AssociativeArray();
-multiplierIdealToSequence := AssociativeArray();
 dimToMultiplier := AssociativeArray();
 for gen_and_JN in multipliers do
 	generators, JN := Explode(gen_and_JN);
 	I := ideal<P| generators>;
 	Append(~multiplierIdeals, I);
 	multiplierIdealToJN[I] := JN;
-	multiplierIdealToSequence[I] := generators;
+	idealToSequence[I] := generators; // if it is also a filtration ideal, overwrite
 	if I notin filtrationIdeals then
-		Pr, v := LogResolution(I);
-		e := v * Transpose(Pr);
-		exc := e * Pr;
-		idealToPr[I] := Pr;
-		idealTo_v[I] := v;
-		idealTo_e[I] := e;
-		idealToExc[I] := exc;
 		INotLocal := ideal<PNotLocal| [Evaluate(gen,[X,Y]) : gen in Basis(I)]>;
 		dim := Dimension(PNotLocal/INotLocal);
 		idealToDimension[I] := dim;
-		intMult := &+[Z| e[1][i] * ef[1][i] : i in [1..Ncols(e)]];
-		idealToIntersectionMult[I] := intMult;
 		dimToMultiplier[dim] := I;
 	end if;
+	idealToIsMultiplier[I] := true;
 end for;
 multiplierIdealsSet := Seqset(multiplierIdeals);
 
@@ -211,18 +242,69 @@ multiplierIdealsNotInFiltration := multiplierIdealsSet diff filtrationIdealsSet;
 JNOfMultiplierIdealsNotInFiltration := [multiplierIdealToJN[I] : I in multiplierIdealsNotInFiltration];
 Sort(~JNOfMultiplierIdealsNotInFiltration);
 
+printf "Done preparing.\n";
+
+//###################################################
+//### Calculate log resolutions and print results
+//###################################################
+
+printf "\n";
+
 prt:=procedure(L)printf"[";for i->l in L do printf"%o%o",&cat Split(Sprintf("%o",l),"*"),i lt#L select", "else"";end for;printf"]";end procedure;
 
-procedure printIdealData(I)
+idealTo_e := AssociativeArray();
+idealTo_v := AssociativeArray();
+idealTo_exc := AssociativeArray();
+
+procedure CalculateAllMultiplicitiesOfIdeal(~idealToIntersectionMult, ~idealTo_e, ~idealTo_v, ~idealTo_exc, I)
+	Pr, v := LogResolution(I);
+	e := Transpose(Pr * Transpose(v));
+	if Ncols(e) lt numPoints then
+		// fill with zeros
+		e := Matrix(numPoints, Eltseq(e) cat [Z|0:i in [Ncols(e)+1..numPoints]]);
+	end if;
+	idealTo_e[I] := e;
+	idealTo_v[I] := e * PrfTInv;
+	idealTo_exc[I] := e * Prf;
+	if idealToIsMultiplier[I] then
+		idealToIntersectionMult[I] := &+[Z| e[1][i] * ef[1][i] : i in [1..Ncols(e)]];
+	end if;
+end procedure;
+
+procedure PrintIdealData(idealToIntersectionMult, idealTo_e, idealTo_v, idealTo_exc, I)
+	e := idealTo_e[I];
+	v := idealTo_v[I];
+	exc := idealTo_exc[I];
+	intMult := idealToIntersectionMult[I];
+
+	if idealToIsMultiplier[I] then
+		printf "[K·Ki]=%-4o JN=%-8o dim(C[x,y]/I)=%o ", intMult, multiplierIdealToJN[I], idealToDimension[I];
+	else
+		printf "[K·Ki]=%-4o    %-8o dim(C[x,y]/I)=%o ", intMult, " ", idealToDimension[I];
+	end if;
+	
+	if printGenerators then
+		SNice, extras := MonomialSequence(idealToSequence[I], maxContact);
+		prt(SNice); for i->elt in extras do printf "\ng%o = %o", i, elt; end for;
+	end if;
 	printf "\n";
 	IndentPush(2);
+	
 	//print LogResolution(I);
-	Pr := idealToPr[I];
-	v := idealTo_v[I];
-	e := idealTo_e[I];
-	exc := idealToExc[I];
-	annotations := Eltseq(exc) cat [Z|0:i in [Ncols(e)..numPoints]];
-	printAnnotatedEnriquesDiagramAndDualGraph(diagramData, annotations);
+	if printExcesses then
+		annotations := Eltseq(exc) cat [Z|0:i in [Ncols(e)..numPoints]];
+		printAnnotatedEnriquesDiagramAndDualGraph(diagramData, annotations : sideBySide:=printDiagramsSideBySide);
+	end if;
+	if printMultiplicities then
+		if printExcesses then printf "\n"; end if;
+		annotations := Eltseq(e) cat [Z|0:i in [Ncols(e)..numPoints]];
+		printAnnotatedEnriquesDiagramAndDualGraph(diagramData, annotations : sideBySide:=printDiagramsSideBySide);
+	end if;
+	if printValues then
+		if printMultiplicities or printExcesses then printf "\n"; end if;
+		annotations := Eltseq(v) cat [Z|0:i in [Ncols(e)..numPoints]];
+		printAnnotatedEnriquesDiagramAndDualGraph(diagramData, annotations : sideBySide:=printDiagramsSideBySide);
+	end if;
 	//printAnnotatedEnriquesDiagram(diagramData, annotations);
 	//printAnnotatedDualGraph(diagramData, annotations);
 	//printf "e = %o\n", e;
@@ -233,13 +315,6 @@ procedure printIdealData(I)
 	IndentPop(2);
 end procedure;
 
-print "Done calculating.";
-printf "\n";
-
-
-//##################################################
-//### Calculate filtration and multiplier ideals
-//##################################################
 
 printf "JN of multiplier ideals not in the filtration (#=%o):\n", #multiplierIdealsNotInFiltration;
 for i->JN in JNOfMultiplierIdealsNotInFiltration do
@@ -253,17 +328,19 @@ printf "\n";
 // Compare filtration vs multipliers
 
 print "----------------------------------------------";
-print ".    -> Multiplier ideal in the filtration";
-print "Y/NO -> Filtration ideal is a multiplier ideal";
-print "!!!! -> Multiplier ideal is not in filtration ";
-print "Enriques diagram and dual graph -> excesses";
+print ".    -> Multiplier ideal in the filtration (not printed)";
+print "filt -> Filtration ideal";
+print "mult -> Multiplier ideal";
+print "Enriques diagram and dual graph: excesses, multiplicities and values";
 print "----------------------------------------------";
 printf "\n";
 
 
 for idx->I in filtrationIdeals do
+	CalculateAllMultiplicitiesOfIdeal(~idealToIntersectionMult, ~idealTo_e, ~idealTo_v, ~idealTo_exc, I);
+	
 	isInteresting := true;
-	if printOnlyInteresting then
+	if printOnlyInterestingIdeals then
 		if I notin multiplierIdealsSet or
 			(idx gt 1 and filtrationIdeals[idx-1] notin multiplierIdealsSet) or
 			(idx lt #filtrationIdeals and filtrationIdeals[idx+1] notin multiplierIdealsSet) then
@@ -272,33 +349,28 @@ for idx->I in filtrationIdeals do
 			isInteresting := false;
 		end if;
 	end if;
-	if isInteresting then	
+	if isInteresting then
 		printf "\n";
 		if I in multiplierIdealsSet then
-			printf "   Y [K·Ki]=%-4o JN=%-8o dim(C[x,y]/I)=%o ", idealToIntersectionMult[I], multiplierIdealToJN[I], idealToDimension[I];
-			SNice, extras := MonomialSequence(filtrationIdealToSequence[I], maxContact);
-			//prt(SNice); for i->elt in extras do printf "\ng%o = %o", i, elt; end for;
-			//printf "\n";
-			printIdealData(I);
+			printf "filt+mult ";
+			PrintIdealData(idealToIntersectionMult, idealTo_e, idealTo_v, idealTo_exc, I);
 		else
-			printf "NO   [K·Ki]=%-4o    %-8o dim(C[x,y]/I)=%o ", idealToIntersectionMult[I], " ", idealToDimension[I];
-			SNice, extras := MonomialSequence(filtrationIdealToSequence[I], maxContact);
-			//prt(SNice); for i->elt in extras do printf "\ng%o = %o", i, elt; end for;
-			//printf "\n";
-			printIdealData(I);
+			printf "filt      ";
+			PrintIdealData(idealToIntersectionMult, idealTo_e, idealTo_v, idealTo_exc, I);
 			dim := idealToDimension[I];
 			if IsDefined(dimToMultiplier, dim) then
 				printf "\n";
 				MI := dimToMultiplier[dim];
-				printf "!!!! [K·Ki]=%-4o JN=%-8o dim(C[x,y]/I)=%o ", idealToIntersectionMult[MI], multiplierIdealToJN[MI], idealToDimension[MI];
-				SNice, extras := MonomialSequence(multiplierIdealToSequence[MI], maxContact);
-				printIdealData(MI);
+				printf "     mult ";
+				CalculateAllMultiplicitiesOfIdeal(~idealToIntersectionMult, ~idealTo_e, ~idealTo_v, ~idealTo_exc, MI);
+				PrintIdealData(idealToIntersectionMult, idealTo_e, idealTo_v, idealTo_exc, MI);
 			end if;
 		end if;
 	else
 		printf ".";
 	end if;
 end for;
+printf "\n";
 //printf "\n\nMultiplier ideals that are not in the filtration:\n\n";
 //if #multiplierIdealsCopy eq 0 then
 //	printf "None\n";
@@ -313,6 +385,108 @@ end for;
 //		printf "\n";
 //	end for;
 //end if;
+
+printf "\n";
+printf "________________________________________\n";
+printf "\n";
+printf "dimension    Filtration/multiplier(Multiplicity)\n";
+printf "|            |    rupture_divisors\n";
+printf "|     intersection|     excesses        Jumping_number\n";
+printf "|     |      |    |     |               |    \n";
+printf "v     v      v    v     v               '--->\n";
+printf "\n";
+dualGraphMatrix := diagramData[1];
+dualGraphMainPath := Eltseq(dualGraphMatrix[1]);
+firstRupture := Min([p : p in dualGraphMainPath | isRupture[p]]);
+firstRupturePosInMainPath := Index(dualGraphMainPath, firstRupture);
+for idx->I in filtrationIdeals do
+	dim := idealToDimension[I];
+	intMult := idealToIntersectionMult[I];
+	if I in multiplierIdealsSet then
+		printf "d%-4o ", dim;
+		printf "i%-4o ", intMult;
+		JN := multiplierIdealToJN[I];
+		printf (Multiplicity(allJN,JN) gt 1) select " FM   " else " Fm   ";
+		for i in [1..g] do
+			if JN in JNbyRuptureSets[i] then printf "E%-1o ", i;
+			else printf " %-1o ", " "; end if;
+		end for;
+		exc := idealTo_exc[I];
+		if &+[exc[1][p] : p in dualGraphMainPath[firstRupturePosInMainPath..#dualGraphMainPath]] eq 0 then
+			printf "conn ";
+		else
+			printf "dis  ";
+		end if;
+		printf "(";
+		for p in dualGraphMainPath do
+			if isRupture[p] then
+				printf "r%o ", exc[1][p];
+			else
+				if exc[1][p] eq 0 then printf ". ";
+				else printf "%o ", exc[1][p]; end if;
+			end if;
+		end for;
+		printf ") ";
+		printf "%-9o ", JN;
+		//printf "%o", [exc[1][p] : p in dualGraphMainPath];
+		printf "\n";
+	else
+		printf "d%-4o ", dim;
+		printf "i%-4o ", intMult;
+		printf "F  |  ";
+		for i in [1..g] do
+			printf " %-1o ", " ";
+		end for;
+		exc := idealTo_exc[I];
+		if &+[exc[1][p] : p in dualGraphMainPath[firstRupturePosInMainPath..#dualGraphMainPath]] eq 0 then
+			printf "conn ";
+		else
+			printf "dis  ";
+		end if;
+		printf "(";
+		for p in dualGraphMainPath do
+			if isRupture[p] then
+				printf "r%o ", exc[1][p];
+			else
+				if exc[1][p] eq 0 then printf ". ";
+				else printf "%o ", exc[1][p]; end if;
+			end if;
+		end for;
+		printf ") ";
+		printf "%-9o ", " ";
+		printf "\n";
+		if IsDefined(dimToMultiplier, dim) then
+			MI := dimToMultiplier[dim];
+			intMult := idealToIntersectionMult[MI];
+			printf "d%-4o ", dim;
+			printf "i%-4o ", intMult;
+			JN := multiplierIdealToJN[MI];
+			printf (Multiplicity(allJN,JN) gt 1) select "|  M  " else "|  m  ";
+			for i in [1..g] do
+				if JN in JNbyRuptureSets[i] then printf "E%-1o ", i;
+				else printf " %-1o ", " "; end if;
+			end for;
+			exc := idealTo_exc[MI];
+			if &+[exc[1][p] : p in dualGraphMainPath[firstRupturePosInMainPath..#dualGraphMainPath]] eq 0 then
+				printf "conn ";
+			else
+				printf "dis  ";
+			end if;
+			printf "(";
+			for p in dualGraphMainPath do
+				if isRupture[p] then
+					printf "r%o ", exc[1][p];
+				else
+					if exc[1][p] eq 0 then printf ". ";
+					else printf "%o ", exc[1][p]; end if;
+				end if;
+			end for;
+			printf ") ";
+			printf "%-9o ", JN;
+			printf "\n";
+		end if;
+	end if;
+end for;
 
 
 

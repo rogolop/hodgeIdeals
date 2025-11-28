@@ -144,64 +144,69 @@ intrinsic printAnnotatedEnriquesDiagram(diagramData::Tup, annotations::Any)
 	end for;
 end intrinsic;
 
-intrinsic printAnnotatedEnriquesDiagramAndDualGraph(diagramData::Tup, annotations::Any : vertSep:="│", horizSep:="───")
+intrinsic printAnnotatedEnriquesDiagramAndDualGraph(diagramData::Tup, annotations::Any : vertSep:="│", horizSep:="───", sideBySide:=true)
 	{
 		TODO
 	}
-	dualGraphMatrix, enriques := Explode(diagramData);
-	Z := Integers();
-	maxLabelSize := Max([Z| #Sprintf("%o",ann) : ann in Eltseq(annotations)]);
-	for i in [1..Max(Nrows(enriques), Ncols(dualGraphMatrix))] do
-		if i le Nrows(enriques) then
-			for j in [1..Ncols(enriques)] do
-				case enriques[i][j]:
-				when 0:
-					printf " " cat " "^maxLabelSize;
-				when -1:
-					printf "─"^Ceiling((maxLabelSize)/ 2) cat "╯" cat
-						" "^Floor((maxLabelSize)/ 2);
-				when -2:
-					printf " "^Ceiling((maxLabelSize)/ 2) cat "│" cat
-						" "^Floor((maxLabelSize)/ 2);
-				when -3:
-					printf " "^Ceiling((maxLabelSize)/ 2) cat "╭" cat
-						"─"^Floor((maxLabelSize)/ 2);
-				else:
-					ann := Sprintf("%o",annotations[enriques[i][j]]);
-					prefix := " ";
-					if j gt 1 then
-						if i eq 1 then
-							prefix := "~";
-						else
-							if enriques[i][j-1] gt 0 then
-								prefix := "─";
+	if sideBySide then
+		dualGraphMatrix, enriques := Explode(diagramData);
+		Z := Integers();
+		maxLabelSize := Max([Z| #Sprintf("%o",ann) : ann in Eltseq(annotations)]);
+		for i in [1..Max(Nrows(enriques), Ncols(dualGraphMatrix))] do
+			if i le Nrows(enriques) then
+				for j in [1..Ncols(enriques)] do
+					case enriques[i][j]:
+					when 0:
+						printf " " cat " "^maxLabelSize;
+					when -1:
+						printf "─"^Ceiling((maxLabelSize)/ 2) cat "╯" cat
+							" "^Floor((maxLabelSize)/ 2);
+					when -2:
+						printf " "^Ceiling((maxLabelSize)/ 2) cat "│" cat
+							" "^Floor((maxLabelSize)/ 2);
+					when -3:
+						printf " "^Ceiling((maxLabelSize)/ 2) cat "╭" cat
+							"─"^Floor((maxLabelSize)/ 2);
+					else:
+						ann := Sprintf("%o",annotations[enriques[i][j]]);
+						prefix := " ";
+						if j gt 1 then
+							if i eq 1 then
+								prefix := "~";
+							else
+								if enriques[i][j-1] gt 0 then
+									prefix := "─";
+								end if;
 							end if;
 						end if;
-					end if;
-					printf "%o%o", &cat[prefix:k in [1..1+maxLabelSize-#ann]], ann;
-				end case;
-			end for;
-		else
-			for j in [1..Ncols(enriques)] do
-				printf " " cat " "^maxLabelSize;
-			end for;
-		end if;
-		printf "    ";
-		
-		if i le Ncols(dualGraphMatrix) then
-			if i gt 1 then printf vertSep; else
-				if vertSep eq "│" then printf "╷"; end if;
+						printf "%o%o", &cat[prefix:k in [1..1+maxLabelSize-#ann]], ann;
+					end case;
+				end for;
+			else
+				for j in [1..Ncols(enriques)] do
+					printf " " cat " "^maxLabelSize;
+				end for;
 			end if;
-			for j in [1..Nrows(dualGraphMatrix)] do
-				pt := dualGraphMatrix[j][i];
-				if pt eq 0 then break; end if;
-				if j gt 1 then printf horizSep; end if;
-				printf "%o", annotations[pt];
-			end for;
-		end if;
-	
-		printf "\n";
-	end for;
+			printf "    ";
+			
+			if i le Ncols(dualGraphMatrix) then
+				if i gt 1 then printf vertSep; else
+					if vertSep eq "│" then printf "╷"; end if;
+				end if;
+				for j in [1..Nrows(dualGraphMatrix)] do
+					pt := dualGraphMatrix[j][i];
+					if pt eq 0 then break; end if;
+					if j gt 1 then printf horizSep; end if;
+					printf "%o", annotations[pt];
+				end for;
+			end if;
+		
+			printf "\n";
+		end for;
+	else
+		printAnnotatedEnriquesDiagram(diagramData, annotations);
+		printAnnotatedDualGraph(diagramData, annotations);
+	end if;
 end intrinsic;
 
 
