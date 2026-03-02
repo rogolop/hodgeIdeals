@@ -13,12 +13,12 @@ Q := RationalField();
 
 printOnlyInterestingIdeals := false;
 printDiagramsSideBySide    := true;
-printGenerators            := false;
+printGenerators            := true;
 printExcesses              := true;
 printMultiplicities        := true;
 printValues                := true;
 
-case 103:
+case 102:
 	when 0: semigroup := [10,15,36];
 	when 1: semigroup := [10,15,36];
 	when 2: semigroup := [8,12,26,53];
@@ -30,6 +30,10 @@ case 103:
 	when 8: semigroup := [36,96,292,881];
 	when 9: semigroup := [24,55];
 	when 10: semigroup := [6,14,43];
+	when 11: semigroup := [10,15,42];
+	when 12: semigroup := [6,14,45];
+	when 13: semigroup := [6,14,53];
+	when 14: semigroup := [2*8,2*19,305];
 	//
 	// a>=2, b>=a+1, c>=2, d>=1, {a,b,c} pairwise coprime, {c,d} coprime
 	when 100: abcd := [2,3,5,2];
@@ -49,11 +53,17 @@ case 103:
 	when 205: n1n2n3abc := [ 3, 2, 5, 7, 3, 6 ]; printDiagramsSideBySide := false;
 	//
 	when 900:
-		// 10-15-36
-		P<x,y> := LocalPolynomialRing(Q,2); R:=Q;
-		f := (y^2-x^3)^5 + x^18;
-		maxContact := [P| x, y, y^2-x^3, f ];
-		semigroup := SemiGroup(f);
+		R:=Q; P<x,y>:=LocalPolynomialRing(R,2);
+		f := (y^2-x^3)^5 + x^18; // 10-15-36
+		maxContact := [P|x,y, y^2-x^3, f ];
+	when 901:
+		R<l>:=RationalFunctionField(Q,1); P<x,y>:=LocalPolynomialRing(R,2);
+		f := y^3 - x^7 + l*x^5*y^1;
+		maxContact := [P|x,y, f ];
+	when 902:
+		R<l>:=RationalFunctionField(Q,1); P<x,y>:=LocalPolynomialRing(R,2);
+		f := (y+l*x)^6 - x^7;
+		maxContact := [P|x,y, f ];
 	else:
 		error "Invalid choice of curve.";
 end case;
@@ -63,7 +73,10 @@ end case;
 //### Curve data
 //##################
 
-if not assigned f then
+if assigned f then
+	semigroup := SemiGroup(f);
+	error if (not assigned maxContact), "maxContact not assigned.";
+else
 	if assigned abcd then 
 		a,b,c,d := Explode(abcd);
 		semigroup := [a*c,b*c,a*b*(c+d)];
@@ -74,7 +87,7 @@ if not assigned f then
 	f, maxContact := ExampleCurve(semigroup);
 	P := Parent(f); x:=P.1; y:=P.2; R := BaseRing(P);
 end if;
-PNotLocal<X,Y> := PolynomialRing(Q,2);
+PNotLocal<X,Y> := PolynomialRing(R,2);
 
 g := #semigroup -1;
 mu := MilnorNumber(f);
@@ -222,11 +235,13 @@ if multipliers[1][2] eq 0 then Remove(~multipliers, 1); end if; // remove JN=0
 multiplierIdeals := [];
 multiplierIdealToJN := AssociativeArray();
 dimToMultiplier := AssociativeArray();
+multiplierIdealToMinimalJumpingDivisors := AssociativeArray();
 for gen_and_JN in multipliers do
-	generators, JN := Explode(gen_and_JN);
+	generators, JN, minimalJumpingDivisors := Explode(gen_and_JN);
 	I := ideal<P| generators>;
 	Append(~multiplierIdeals, I);
 	multiplierIdealToJN[I] := JN;
+	multiplierIdealToMinimalJumpingDivisors[I] := [Sprintf("p%o",i-1) : i in minimalJumpingDivisors];
 	idealToSequence[I] := generators; // if it is also a filtration ideal, overwrite
 	if I notin filtrationIdeals then
 		INotLocal := ideal<PNotLocal| [Evaluate(gen,[X,Y]) : gen in Basis(I)]>;
@@ -389,11 +404,15 @@ printf "\n";
 printf "\n";
 printf "________________________________________\n";
 printf "\n";
-printf "dimension    Filtration/multiplier(Multiplicity)\n";
-printf "|            |    rupture_divisors\n";
-printf "|     intersection|     excesses        Jumping_number\n";
-printf "|     |      |    |     |               |    \n";
-printf "v     v      v    v     v               '--->\n";
+printf "codimension                                                 \n";
+printf "|     intersection multiplicity [K·Ki]                      \n";
+printf "|     |      Filtration/multiplier(with Multiplicity)       \n";
+printf "|     |      |    rupture divisors                          \n";
+printf "|     |      |    |     minimal jumping divisors            \n";
+printf "|     |      |    |     |       (dis)connected excesses     \n";
+printf "|     |      |    |     |       |       jumping number      \n";
+printf "|     |      |    |     |       |       |                   \n";
+printf "v     v      v    v     v       '-->    '-->                \n";
 printf "\n";
 dualGraphMatrix := diagramData[1];
 dualGraphMainPath := Eltseq(dualGraphMatrix[1]);
@@ -411,6 +430,9 @@ for idx->I in filtrationIdeals do
 			if JN in JNbyRuptureSets[i] then printf "E%-1o ", i;
 			else printf " %-1o ", " "; end if;
 		end for;
+		
+		printf "%o ", multiplierIdealToMinimalJumpingDivisors[I];
+
 		exc := idealTo_exc[I];
 		if &+[exc[1][p] : p in dualGraphMainPath[firstRupturePosInMainPath..#dualGraphMainPath]] eq 0 then
 			printf "conn ";
@@ -419,12 +441,8 @@ for idx->I in filtrationIdeals do
 		end if;
 		printf "(";
 		for p in dualGraphMainPath do
-			if isRupture[p] then
-				printf "r%o ", exc[1][p];
-			else
-				if exc[1][p] eq 0 then printf ". ";
-				else printf "%o ", exc[1][p]; end if;
-			end if;
+			if isRupture[p] then printf "r"; end if;
+			printf "%o ", exc[1][p] eq 0 select "." else exc[1][p];
 		end for;
 		printf ") ";
 		printf "%-9o ", JN;
@@ -437,6 +455,9 @@ for idx->I in filtrationIdeals do
 		for i in [1..g] do
 			printf " %-1o ", " ";
 		end for;
+		
+		printf "%o ", "       ";
+		
 		exc := idealTo_exc[I];
 		if &+[exc[1][p] : p in dualGraphMainPath[firstRupturePosInMainPath..#dualGraphMainPath]] eq 0 then
 			printf "conn ";
@@ -445,12 +466,8 @@ for idx->I in filtrationIdeals do
 		end if;
 		printf "(";
 		for p in dualGraphMainPath do
-			if isRupture[p] then
-				printf "r%o ", exc[1][p];
-			else
-				if exc[1][p] eq 0 then printf ". ";
-				else printf "%o ", exc[1][p]; end if;
-			end if;
+			if isRupture[p] then printf "r"; end if;
+			printf "%o ", exc[1][p] eq 0 select "." else exc[1][p];
 		end for;
 		printf ") ";
 		printf "%-9o ", " ";
@@ -466,6 +483,9 @@ for idx->I in filtrationIdeals do
 				if JN in JNbyRuptureSets[i] then printf "E%-1o ", i;
 				else printf " %-1o ", " "; end if;
 			end for;
+			
+			printf "%o ", multiplierIdealToMinimalJumpingDivisors[MI];
+			
 			exc := idealTo_exc[MI];
 			if &+[exc[1][p] : p in dualGraphMainPath[firstRupturePosInMainPath..#dualGraphMainPath]] eq 0 then
 				printf "conn ";
@@ -474,12 +494,8 @@ for idx->I in filtrationIdeals do
 			end if;
 			printf "(";
 			for p in dualGraphMainPath do
-				if isRupture[p] then
-					printf "r%o ", exc[1][p];
-				else
-					if exc[1][p] eq 0 then printf ". ";
-					else printf "%o ", exc[1][p]; end if;
-				end if;
+				if isRupture[p] then printf "r"; end if;
+				printf "%o ", exc[1][p] eq 0 select "." else exc[1][p];
 			end for;
 			printf ") ";
 			printf "%-9o ", JN;
