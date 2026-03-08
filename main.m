@@ -17,8 +17,9 @@ printGenerators            := true;
 printExcesses              := true;
 printMultiplicities        := true;
 printValues                := true;
+quitOnFinish               := true;
 
-case 102:
+case 903:
 	when 0: semigroup := [10,15,36];
 	when 1: semigroup := [10,15,36];
 	when 2: semigroup := [8,12,26,53];
@@ -63,6 +64,11 @@ case 102:
 	when 902:
 		R<l>:=RationalFunctionField(Q,1); P<x,y>:=LocalPolynomialRing(R,2);
 		f := (y+l*x)^6 - x^7;
+		maxContact := [P|x,y, f ];
+		
+	when 903:
+		R:=Q; P<x,y>:=LocalPolynomialRing(R,2);
+		f := y^4+x^5;
 		maxContact := [P|x,y, f ];
 	else:
 		error "Invalid choice of curve.";
@@ -189,14 +195,16 @@ printf "\n";
 
 //##################################################
 //### Calculate filtration and multiplier ideals
-//##################################################
+//################################################sing##
 
 print "Calculating filtration...";
 case 1:
 	when 1:
+		// Filtration by the curve
 		filtration := Filtration(f : N:=mu);
 		filtration := [<ChangeUniverse(gen_and_int[1],P), gen_and_int[2]> : gen_and_int in filtration];
 	when 2:
+		// Filtration by each rupture divisor, combined, which may not make much sense
 		filtration := [];
 		for i in [1..g] do
 			filtration_i := FiltrationRupture(f,i : N:=mu);
@@ -513,5 +521,9 @@ end for;
 
 
 printf "\n\nFinished\n";
-quit;
+if (quitOnFinish) then
+	quit;
+end if;
+
+
 
