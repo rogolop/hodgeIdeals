@@ -17,7 +17,7 @@ printGenerators            := true;
 printExcesses              := true;
 printMultiplicities        := true;
 printValues                := true;
-quitOnFinish               := true;
+quitOnFinish               := false;
 
 case 903:
 	when 0: semigroup := [10,15,36];
@@ -68,7 +68,7 @@ case 903:
 		
 	when 903:
 		R:=Q; P<x,y>:=LocalPolynomialRing(R,2);
-		f := y^4+x^5;
+		f := y^4+x^7;
 		maxContact := [P|x,y, f ];
 	else:
 		error "Invalid choice of curve.";
