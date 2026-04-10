@@ -1,17 +1,17 @@
 //import "SingularitiesDim2/NewtonPolygon.m": NewtonSides;
 
-intrinsic rhoTilde(weights::[], ab::[]) -> FldRatElt
-{ Minimum weight of the monomial x^a*y^b (the function name is Zhang notation). }
+intrinsic rho_NND_QH(weights::[], ab::[]) -> FldRatElt
+{ Weight function for Newton non-degenerate or quasihomogeneous plane curves, applied to the monomial x^a*y^b. }
 	min := Min([Rationals()| weights[i][1]*(1 + ab[1]) + weights[i][2]*(1 + ab[2]) : i in [1..#weights]]);
 	return min;
 end intrinsic;
 
-intrinsic OTildeGe(weights::[], rho::FldRatElt, Pa::RngMPolLoc) -> []
-{ Monomial generators with weight >= rho. }
+intrinsic OGe_NND_QH(weights::[], rho::FldRatElt, Pa::RngMPolLoc) -> []
+{ Monomial generators with weight >= rho, for Newton non-degenerate or quasihomogeneous plane curves. }
 	x := Pa.1; y := Pa.2;
 	
 	j := 0;
-	while rhoTilde(weights, [0,j]) lt rho do
+	while rho_NND_QH(weights, [0,j]) lt rho do
 		j +:= 1;
 	end while;
 	gen := [Pa| y^j];
@@ -19,7 +19,7 @@ intrinsic OTildeGe(weights::[], rho::FldRatElt, Pa::RngMPolLoc) -> []
 	jLast := j;
 	while j gt 0 do
 		jLast := j;
-		while rhoTilde(weights, [i,j]) ge rho do
+		while rho_NND_QH(weights, [i,j]) ge rho do
 			j -:= 1;
 		end while;
 		j +:= 1;
@@ -49,8 +49,8 @@ intrinsic Der(f::RngMPolLocElt, i::RngIntElt) -> RngMPolLocElt
 	return df;
 end intrinsic;
 
-intrinsic HodgeCandidate(f::RngMPolLocElt, k::RngIntElt, alpha::FldRatElt) -> []
-{ Hodge ideal I_k(f^alpha). }
+intrinsic HodgeIdeal_NND_QH(f::RngMPolLocElt, k::RngIntElt, alpha::FldRatElt) -> []
+{ Hodge ideal I_k(f^alpha) for Newton non-degenerate or quasihomogeneous plane curves. }
 	assert k ge 0;
 	assert alpha gt 0 and alpha le 1;
 	
@@ -73,10 +73,11 @@ intrinsic HodgeCandidate(f::RngMPolLocElt, k::RngIntElt, alpha::FldRatElt) -> []
 	Pa<x,y> := LocalPolynomialRing(Ra,2);
 	//AssignNames(~Pa, ["x","y"]); x := Pa.1; y := Pa.2;
 	fa := Evaluate(f, [x,y]);
-	gen := [Pa| Evaluate(g, [x,y]) : g in OTildeGe(weights, alpha + k, Pa)];
+	//gen := [Pa| Evaluate(g, [x,y]) : g in OGe_NND_QH(weights, alpha + k, Pa)];
+	gen := OGe_NND_QH(weights, alpha + k, Pa);
 	
 	if k gt 0 then
-		Hodge_kMinus1 := HodgeCandidate(f, k-1, alpha);
+		Hodge_kMinus1 := HodgeIdeal_NND_QH(f, k-1, alpha);
 		moreGen := &cat[[Pa| fa*Pa!Der(g,1) - (a+k-1)*Pa!g*Der(fa,1),
 			fa*Pa!Der(g,2) - (a+k-1)*Pa!g*Der(fa,2)] :
 			g in Hodge_kMinus1 ];
@@ -89,8 +90,8 @@ intrinsic HodgeCandidate(f::RngMPolLocElt, k::RngIntElt, alpha::FldRatElt) -> []
 	//return gen;
 end intrinsic;
 
-intrinsic HodgeCandidateWithData(f::RngMPolLocElt, k::RngIntElt, alpha::FldRatElt, rho_to_OTildeGe::Assoc, allRhos::[]) -> []
-{ Hodge ideal I_k(f^alpha), given data about OTildeGe. }
+intrinsic HodgeIdealWithData_NND_QH(f::RngMPolLocElt, k::RngIntElt, alpha::FldRatElt, rho_to_OGe_NND_QH::Assoc, allRhos::[]) -> []
+{ Hodge ideal I_k(f^alpha) for Newton non-degenerate or quasihomogeneous plane curves, given data about OGe_NND_QH. }
 	assert k ge 0;
 	assert alpha gt 0 and alpha le 1;
 	
@@ -100,7 +101,7 @@ intrinsic HodgeCandidateWithData(f::RngMPolLocElt, k::RngIntElt, alpha::FldRatEl
 	//R := BaseRing(P);
 	//Ra<a> := RationalFunctionField(R,1);
 	//Pa<x,y> := LocalPolynomialRing(Ra,2);
-	Pa<x,y> := Universe(rho_to_OTildeGe[allRhos[1]]);
+	Pa<x,y> := Universe(rho_to_OGe_NND_QH[allRhos[1]]);
 	Ra<a> := BaseRing(Pa);
 	fa := Evaluate(f, [x,y]);
 	
@@ -110,11 +111,11 @@ intrinsic HodgeCandidateWithData(f::RngMPolLocElt, k::RngIntElt, alpha::FldRatEl
 	else
 		rho := Min([Q| rho : rho in allRhos | rho gt alpha + k]);
 	end if;
-	//gen := [Pa| Evaluate(g, [x,y]) : g in rho_to_OTildeGe[rho]];
-	gen := rho_to_OTildeGe[rho];
+	//gen := [Pa| Evaluate(g, [x,y]) : g in rho_to_OGe_NND_QH[rho]];
+	gen := rho_to_OGe_NND_QH[rho];
 	
 	if k gt 0 then
-		Hodge_kMinus1 := HodgeCandidateWithData(f, k-1, alpha, rho_to_OTildeGe, allRhos);
+		Hodge_kMinus1 := HodgeIdealWithData_NND_QH(f, k-1, alpha, rho_to_OGe_NND_QH, allRhos);
 		moreGen := &cat[[Pa| fa*Pa!Der(g,1) - (a+k-1)*Pa!g*Der(fa,1),
 			fa*Pa!Der(g,2) - (a+k-1)*Pa!g*Der(fa,2)] :
 			g in Hodge_kMinus1 ];
@@ -137,8 +138,8 @@ intrinsic HodgeCandidateWithData(f::RngMPolLocElt, k::RngIntElt, alpha::FldRatEl
 end intrinsic;
 
 
-intrinsic AllHodgeCandidates(f::RngMPolLocElt, kMax::RngIntElt) -> []
-{ Hodge ideals I_k(f^alpha) for all 0<=k<=kMax and all 0<alpha<=1. }
+intrinsic HodgeIdeals_NND_QH(f::RngMPolLocElt, kMax::RngIntElt) -> []
+{ Hodge ideals I_k(f^alpha) for all 0<=k<=kMax and all 0<alpha<=1, for Newton non-degenerate or quasihomogeneous plane curves. }
 	assert kMax ge 0;
 	
 	Nf := NewtonPolygon(f); // Points
@@ -162,32 +163,35 @@ intrinsic AllHodgeCandidates(f::RngMPolLocElt, kMax::RngIntElt) -> []
 	Pa<x,y> := LocalPolynomialRing(Ra,2);
 	fa := Evaluate(f, [x,y]);
 	
-	rho_to_OTildeGe := AssociativeArray();
+	rho_to_OGe_NND_QH := AssociativeArray();
 	allRhos := [Q| ];
-	rho := rhoTilde(weights, [0,0]);
+	rho := rho_NND_QH(weights, [0,0]);
 	
-	gen := [Pa| Evaluate(g, [x,y]) : g in OTildeGe(weights, rho, Pa)];
-	rho_to_OTildeGe[rho] := gen;
+	//gen := [Pa| Evaluate(g, [x,y]) : g in OGe_NND_QH(weights, rho, Pa)];
+	gen := OGe_NND_QH(weights, rho, Pa);
+	rho_to_OGe_NND_QH[rho] := gen;
 	Append(~allRhos, rho);
 	while rho le (1 + kMax) do
-		rhoLast := rho;
-		rho +:= 1;
+		// The next rho is the minimum value of rho_NND_QH() greater than rho
+		rhoNext := rho+1; // upper bound of the next rho
 		for l in [1..#gen] do
-			ab := Exponents(gen[l]); // x^a*y^b
-			r := rhoTilde(weights, ab);
-			if r lt rho and r gt rhoLast then rho := r; end if;
-			r := rhoTilde(weights, [ab[1], ab[2]+1]);
-			if r lt rho and r gt rhoLast then rho := r; end if;
-			r := rhoTilde(weights, [ab[1]+1, ab[2]]);
-			if r lt rho and r gt rhoLast then rho := r; end if;
+			a, b := Explode(Exponents(gen[l])); // x^a*y^b
+			r := rho_NND_QH(weights, [a,b]);
+			if r gt rho and r lt rhoNext then rhoNext := r; end if;
+			r := rho_NND_QH(weights, [a, b+1]);
+			if r gt rho and r lt rhoNext then rhoNext := r; end if;
+			r := rho_NND_QH(weights, [a+1, b]);
+			if r gt rho and r lt rhoNext then rhoNext := r; end if;
 		end for;
+		rho := rhoNext;
 		
-		gen := [Pa| Evaluate(g, [x,y]) : g in OTildeGe(weights, rho, Pa)];
-		rho_to_OTildeGe[rho] := gen;
+		//gen := [Pa| Evaluate(g, [x,y]) : g in OGe_NND_QH(weights, rho, Pa)];
+		gen := OGe_NND_QH(weights, rho, Pa);
+		rho_to_OGe_NND_QH[rho] := gen;
 		Append(~allRhos, rho);
 	end while;
 	
-	//for rho in allRhos do printf "%o -> ", rho; prt(rho_to_OTildeGe[rho]); printf "\n"; end for;
+	//for rho in allRhos do printf "%o -> ", rho; prt(rho_to_OGe_NND_QH[rho]); printf "\n"; end for;
 	allHodge := AssociativeArray();
 	allAlphas := [];
 	for k in [0..kMax] do
@@ -197,7 +201,7 @@ intrinsic AllHodgeCandidates(f::RngMPolLocElt, kMax::RngIntElt) -> []
 		Append(~allAlphas, alphas);
 		
 		for alpha in alphas do
-			gen := HodgeCandidateWithData(f, k, alpha, rho_to_OTildeGe, allRhos);
+			gen := HodgeIdealWithData_NND_QH(f, k, alpha, rho_to_OGe_NND_QH, allRhos);
 			ChangeUniverse(~gen, Pa);
 			allHodge[<k,alpha>] := gen;
 		end for;
@@ -211,7 +215,7 @@ intrinsic AllHodgeCandidates(f::RngMPolLocElt, kMax::RngIntElt) -> []
 	
 	//return gen;
 	*/
-	//return allRhos, rho_to_OTildeGe;
+	//return allRhos, rho_to_OGe_NND_QH;
 	
 	results := &cat[ [ <k, alpha, allHodge[<k,alpha>]> : alpha in allAlphas[k +1]] : k in [0..kMax]];
 	// Remove the correct duplicates (if I1=I2=I3, keep I3)

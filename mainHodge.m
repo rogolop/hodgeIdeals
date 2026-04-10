@@ -107,7 +107,7 @@ prt:=procedure(L)for i->l in L do printf"%o%o",&cat Split(Sprintf("%o",l),"*^ ")
 //### Calculate ideals
 //##################################################
 
-h := AllHodgeCandidates(f, 1);
+h := HodgeIdeals_NND_QH(f, 1);
 printf "\n";
 kLast := 0;
 for tup in h do
