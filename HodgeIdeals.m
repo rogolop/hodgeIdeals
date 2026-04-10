@@ -1,43 +1,13 @@
-AttachSpec("SingularitiesDim2/IntegralClosureDim2.spec");
-AttachSpec("ZetaFunction/ZetaFunction.spec");
-Attach("MonomialSequence.m");
-Attach("ExampleCurve.m");
-Attach("planeCurveDiagrams.m");
-import "SingularitiesDim2/IntegralClosure.m": Unloading;
-//Z := IntegerRing();
-//Q := RationalField();
+//import "SingularitiesDim2/NewtonPolygon.m": NewtonSides;
 
-//######################
-//### Input/settings
-//######################
-
-printDiagrams           := false;
-printDiagramsSideBySide := true;
-quitOnFinish            := true;
-
-//R:=Q;
-//P<x,y>:=LocalPolynomialRing(Q,2);
-PPP<X,Y>:=LocalPolynomialRing(Rationals(),2);
-//fString := "(y^2-11*x^3)*(y^3-x^4)";
-//fString := "y^3 + x^7";
-//fString := "x^3 + y^7";
-fString := "X^7+X^4*Y^2+Y^4";
-f := eval fString;
-
-//PNotLocal<X,Y> := PolynomialRing(R,2);
-
-
-
-//##################################################
-//### Functions for Hodge ideals
-//##################################################
-
-function rhoTilde(weights, ab) // Zhang: rho tilde
+intrinsic rhoTilde(weights::[], ab::[]) -> FldRatElt
+{ Minimum weight of the monomial x^a*y^b (the function name is Zhang notation). }
 	min := Min([Rationals()| weights[i][1]*(1 + ab[1]) + weights[i][2]*(1 + ab[2]) : i in [1..#weights]]);
 	return min;
-end function;
+end intrinsic;
 
-function OTildeGe(weights, rho, Pa)
+intrinsic OTildeGe(weights::[], rho::FldRatElt, Pa::RngMPolLoc) -> []
+{ Monomial generators with weight >= rho. }
 	x := Pa.1; y := Pa.2;
 	
 	j := 0;
@@ -64,9 +34,10 @@ function OTildeGe(weights, rho, Pa)
 	end while;
 	//return Reduce(Basis(ideal<PNotLocal|gen>));
 	return gen;
-end function;
+end intrinsic;
 
-function Der(f, i)
+intrinsic Der(f::RngMPolLocElt, i::RngIntElt) -> RngMPolLocElt
+{ Derivative of f with respect to the i-th variable in a local polynomial ring. }
 	P := Parent(f);
 	df := P!0;
 	for t in Terms(f) do
@@ -76,9 +47,10 @@ function Der(f, i)
 		end if;
 	end for;
 	return df;
-end function;
+end intrinsic;
 
-function HodgeCandidate(f, k, alpha)
+intrinsic HodgeCandidate(f::RngMPolLocElt, k::RngIntElt, alpha::FldRatElt) -> []
+{ Hodge ideal I_k(f^alpha). }
 	assert k ge 0;
 	assert alpha gt 0 and alpha le 1;
 	
@@ -115,9 +87,10 @@ function HodgeCandidate(f, k, alpha)
 	return Sort(ChangeUniverse(Reduce(Basis(ideal<PaNotLocal|gen>)), Pa));
 	
 	//return gen;
-end function;
+end intrinsic;
 
-function HodgeCandidateWithData(f, k, alpha, rho_to_OTildeGe, allRhos)
+intrinsic HodgeCandidateWithData(f::RngMPolLocElt, k::RngIntElt, alpha::FldRatElt, rho_to_OTildeGe::Assoc, allRhos::[]) -> []
+{ Hodge ideal I_k(f^alpha), given data about OTildeGe. }
 	assert k ge 0;
 	assert alpha gt 0 and alpha le 1;
 	
@@ -161,10 +134,11 @@ function HodgeCandidateWithData(f, k, alpha, rho_to_OTildeGe, allRhos)
 		Append(~result, gPretty);
 	end for;
 	return result;
-end function;
+end intrinsic;
 
 
-function AllHodgeCandidates(f, kMax)
+intrinsic AllHodgeCandidates(f::RngMPolLocElt, kMax::RngIntElt) -> []
+{ Hodge ideals I_k(f^alpha) for all 0<=k<=kMax and all 0<alpha<=1. }
 	assert kMax ge 0;
 	
 	Nf := NewtonPolygon(f); // Points
@@ -245,109 +219,7 @@ function AllHodgeCandidates(f, kMax)
 		i eq #results or ideal<Pa|results[i][3]> ne ideal<Pa|results[i+1][3]>];
 	
 	return results;
-end function;
-
-
-
-//##################
-//### Curve data
-//##################
-
-printf "f = %o\n= %o\n", fString, f;
-
-//prt:=procedure(L)printf"[";for i->l in L do printf"%o%o",&cat Split(Sprintf("%o",l),"*"),i lt#L select", "else"";end for;printf"]";end procedure;
-//prt:=procedure(L)printf"[";for i->l in L do printf"%o%o",&cat Split(Sprintf("%o",l),"*^"),i lt#L select", "else"";end for;printf"]";end procedure;
-prt:=procedure(L)for i->l in L do printf"%o%o",&cat Split(Sprintf("%o",l),"*^ "),i lt#L select", "else"";end for;end procedure;
-
-
-//semigroup := SemiGroup(f);
-//
-//g := #semigroup -1;
-//mu := MilnorNumber(f);
-////printf "f = %o\n", f;
-////print "maxContact ="; print maxContact;
-//Prf, ef := ProximityMatrix(semigroup);
-//numPoints := Nco;ls(Prf);
-//PrfT := Transpose(Prf);
-//PrfTInv := PrfT^-1;
-//vf := ef * PrfTInv;
-//N := -PrfT * Prf;
-//excf := ef * Prf; //vf * (-N);
-//M := N; for i in [1..numPoints] do M[i][i] := 0; end for;
-//
-//planeBranchNumbers := PlaneBranchNumbers(semigroup);
-//g, c, betas, es, ms, ns, qs, _betas, _ms, Nps, kps, Ns, ks := Explode(planeBranchNumbers);
-//
-//isFree := [ &+Eltseq(Prf[pt]) ge 0 : pt in [1..numPoints]];
-//isRupture := [ (&+Eltseq(M[pt]) ge 3) or (pt eq numPoints and &+Eltseq(M[pt]) ge 2) : pt in [1..numPoints]];
-//
-//diagramData := diagramDataFromProximity(Prf); // For plots
-//
-//printf "\n";
-//printf "Semigroup %o\n", semigroup;
-//printf "\n";
-//printf "f = %o\n",f;
-//printf "\n";
-//
-//if printDiagrams then
-//	printf "Points:\n";
-//	annotations := [Sprintf("p%o", pt-1) : pt in [1..numPoints]];
-//	printAnnotatedEnriquesDiagramAndDualGraph(diagramData, annotations : sideBySide:=printDiagramsSideBySide);
-//	printf "\n";
-//
-//	printf "Multiplicities (e):\n";
-//	annotations := ef[1];
-//	printAnnotatedEnriquesDiagramAndDualGraph(diagramData, annotations : sideBySide:=printDiagramsSideBySide);
-//	printf "\n";
-//
-//	printf "Values (v):\n";
-//	annotations := vf[1];
-//	printAnnotatedEnriquesDiagramAndDualGraph(diagramData, annotations : sideBySide:=printDiagramsSideBySide);
-//	printf "\n";
-//end if;
-
-if false then
-	Nf := NewtonPolygon(f); // Points
-	sides := NewtonSides(f, Nf); // For each side: <n, m, F_Gamma(Z)> with n=h(Gamma)
-
-	// Weights for side with slope -n/m, containing point (a,b) in Nf:
-	// (1/m, 1/n) * 1/(a/m + b/n) = ( 1/(a+b*m/n), 1/(a*n/m+b) ) = ( n/(na+mb), m/(na+mb) )
-	weights := []; // Zhang: B_F
-	for i in [1..#sides] do
-		n := sides[i][1];
-		m := sides[i][2];
-		a := Nf[i][1];
-		b := Nf[i][2];
-		Append(~weights, <n/(n*a+m*b), m/(n*a+m*b)>);
-	end for;
-	printf "weights: %o\n", weights;
-	offsets := [ws[1] + ws[2] : ws in weights];
-	printf "offsets: %o\n", offsets;
-	printf "\n";
-end if;
-
-
-
-//##################################################
-//### Calculate ideals
-//##################################################
-
-h := AllHodgeCandidates(f, 1);
-printf "\n";
-kLast := 0;
-for tup in h do
-	k, alpha, I := Explode(tup);
-	if k ne kLast then print "---"; end if;
-	printf "%-16o", Sprintf("I_%o(f^%o): ", k, alpha);
-	prt(I); printf "\n";
-	kLast := k;
-end for;
-
-
-printf "\n\nFinished\n";
-if quitOnFinish then
-	quit;
-end if;
+end intrinsic;
 
 
 
