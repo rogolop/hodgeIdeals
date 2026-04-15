@@ -1,8 +1,10 @@
 //import "SingularitiesDim2/NewtonPolygon.m": NewtonSides;
 
+prt:=procedure(L)for i->l in L do printf"%o%o",&cat Split(Sprintf("%o",l),"*^ "),i lt#L select", "else"";end for;end procedure;
+
 intrinsic rho_NND_QH(weights::[], ab::[]) -> FldRatElt
 { Weight function for Newton non-degenerate or quasihomogeneous plane curves, applied to the monomial x^a*y^b. }
-	min := Min([Rationals()| weights[i][1]*(1 + ab[1]) + weights[i][2]*(1 + ab[2]) : i in [1..#weights]]);
+	min, _ := Min([Rationals()| weights[i][1]*(1 + ab[1]) + weights[i][2]*(1 + ab[2]) : i in [1..#weights]]);
 	return min;
 end intrinsic;
 
@@ -90,7 +92,7 @@ intrinsic HodgeIdeal_NND_QH(f::RngMPolLocElt, k::RngIntElt, alpha::FldRatElt) ->
 	//return gen;
 end intrinsic;
 
-intrinsic HodgeIdealWithData_NND_QH(f::RngMPolLocElt, k::RngIntElt, alpha::FldRatElt, rho_to_OGe_NND_QH::Assoc, allRhos::[]) -> []
+intrinsic HodgeIdealWithData_NND_QH(f::RngMPolLocElt, k::RngIntElt, alpha::FldRatElt, rho_to_OGe::Assoc, allRhos::[] : reduceBasis:=true, clearDenominators:=true) -> []
 { Hodge ideal I_k(f^alpha) for Newton non-degenerate or quasihomogeneous plane curves, given data about OGe_NND_QH. }
 	assert k ge 0;
 	assert alpha gt 0 and alpha le 1;
@@ -101,44 +103,46 @@ intrinsic HodgeIdealWithData_NND_QH(f::RngMPolLocElt, k::RngIntElt, alpha::FldRa
 	//R := BaseRing(P);
 	//Ra<a> := RationalFunctionField(R,1);
 	//Pa<x,y> := LocalPolynomialRing(Ra,2);
-	Pa<x,y> := Universe(rho_to_OGe_NND_QH[allRhos[1]]);
+	Pa<x,y> := Universe(rho_to_OGe[allRhos[1]]);
 	Ra<a> := BaseRing(Pa);
 	fa := Evaluate(f, [x,y]);
 	
 	// Õ^{>=rho_i} > Õ^{>=alpha+k} = Õ^{>=rho_{i+1}}
-	if alpha + k in allRhos then
-		rho := alpha + k;
-	else
-		rho := Min([Q| rho : rho in allRhos | rho gt alpha + k]);
-	end if;
-	//gen := [Pa| Evaluate(g, [x,y]) : g in rho_to_OGe_NND_QH[rho]];
-	gen := rho_to_OGe_NND_QH[rho];
+	rho := Min([Q| rho : rho in allRhos | rho ge alpha + k]);
+	
+	//gen := [Pa| Evaluate(g, [x,y]) : g in rho_to_OGe[rho]];
+	gen := rho_to_OGe[rho];
 	
 	if k gt 0 then
-		Hodge_kMinus1 := HodgeIdealWithData_NND_QH(f, k-1, alpha, rho_to_OGe_NND_QH, allRhos);
+		Hodge_kMinus1 := HodgeIdealWithData_NND_QH(f, k-1, alpha, rho_to_OGe, allRhos);
 		moreGen := &cat[[Pa| fa*Pa!Der(g,1) - (a+k-1)*Pa!g*Der(fa,1),
 			fa*Pa!Der(g,2) - (a+k-1)*Pa!g*Der(fa,2)] :
 			g in Hodge_kMinus1 ];
 		gen cat:= moreGen;
 	end if;
 	
-	PaNotLocal := PolynomialRing(Ra,2);
-	
-	// Prettier basis (no fractions)
-	gen := Sort(ChangeUniverse(Reduce(Basis(ideal<PaNotLocal|gen>)), Pa));
-	result := [Pa| ];
-	for g in gen do
-		commonDenomIn_a := LCM([Denominator(c) : c in Coefficients(g)]);
-		gPretty := g*commonDenomIn_a;
-		commonDenomInteger := LCM(&cat[ [Z| Denominator(cc) : cc in Coefficients(Numerator(c))] : c in Coefficients(gPretty)]);
-		gPretty *:= commonDenomInteger;
-		Append(~result, gPretty);
-	end for;
-	return result;
+	// Prettier basis
+	if reduceBasis then
+		PaNotLocal := PolynomialRing(Ra,2);
+		gen := Sort(ChangeUniverse(Reduce(Basis(ideal<PaNotLocal|gen>)), Pa));
+	end if;
+	if clearDenominators then
+		result := [Pa| ];
+		for g in gen do
+			commonDenomIn_a := LCM([Denominator(c) : c in Coefficients(g)]);
+			gPretty := g * commonDenomIn_a;
+			commonDenomInteger := LCM(&cat[ [Z| Denominator(cc) : cc in Coefficients(Numerator(c))] : c in Coefficients(gPretty)]);
+			gPretty *:= commonDenomInteger;
+			Append(~result, gPretty);
+		end for;
+		return result;
+	else
+		return gen;
+	end if;
 end intrinsic;
 
 
-intrinsic HodgeIdeals_NND_QH(f::RngMPolLocElt, kMax::RngIntElt) -> []
+intrinsic HodgeIdeals_NND_QH(f::RngMPolLocElt, kMax::RngIntElt : reduceBasis:=true, clearDenominators:=true) -> []
 { Hodge ideals I_k(f^alpha) for all 0<=k<=kMax and all 0<alpha<=1, for Newton non-degenerate or quasihomogeneous plane curves. }
 	assert kMax ge 0;
 	
@@ -163,13 +167,13 @@ intrinsic HodgeIdeals_NND_QH(f::RngMPolLocElt, kMax::RngIntElt) -> []
 	Pa<x,y> := LocalPolynomialRing(Ra,2);
 	fa := Evaluate(f, [x,y]);
 	
-	rho_to_OGe_NND_QH := AssociativeArray();
+	rho_to_OGe := AssociativeArray();
 	allRhos := [Q| ];
 	rho := rho_NND_QH(weights, [0,0]);
 	
 	//gen := [Pa| Evaluate(g, [x,y]) : g in OGe_NND_QH(weights, rho, Pa)];
 	gen := OGe_NND_QH(weights, rho, Pa);
-	rho_to_OGe_NND_QH[rho] := gen;
+	rho_to_OGe[rho] := gen;
 	Append(~allRhos, rho);
 	while rho le (1 + kMax) do
 		// The next rho is the minimum value of rho_NND_QH() greater than rho
@@ -187,11 +191,12 @@ intrinsic HodgeIdeals_NND_QH(f::RngMPolLocElt, kMax::RngIntElt) -> []
 		
 		//gen := [Pa| Evaluate(g, [x,y]) : g in OGe_NND_QH(weights, rho, Pa)];
 		gen := OGe_NND_QH(weights, rho, Pa);
-		rho_to_OGe_NND_QH[rho] := gen;
+		rho_to_OGe[rho] := gen;
 		Append(~allRhos, rho);
 	end while;
 	
-	//for rho in allRhos do printf "%o -> ", rho; prt(rho_to_OGe_NND_QH[rho]); printf "\n"; end for;
+	//for rho in allRhos do printf "%o: ", rho; prt(rho_to_OGe[rho]); printf "\n"; end for;
+	
 	allHodge := AssociativeArray();
 	allAlphas := [];
 	for k in [0..kMax] do
@@ -201,8 +206,8 @@ intrinsic HodgeIdeals_NND_QH(f::RngMPolLocElt, kMax::RngIntElt) -> []
 		Append(~allAlphas, alphas);
 		
 		for alpha in alphas do
-			gen := HodgeIdealWithData_NND_QH(f, k, alpha, rho_to_OGe_NND_QH, allRhos);
-			ChangeUniverse(~gen, Pa);
+			gen := HodgeIdealWithData_NND_QH(f, k, alpha, rho_to_OGe, allRhos : reduceBasis:=reduceBasis, clearDenominators:=clearDenominators);
+			//ChangeUniverse(~gen, Pa);
 			allHodge[<k,alpha>] := gen;
 		end for;
 	end for;
@@ -215,7 +220,7 @@ intrinsic HodgeIdeals_NND_QH(f::RngMPolLocElt, kMax::RngIntElt) -> []
 	
 	//return gen;
 	*/
-	//return allRhos, rho_to_OGe_NND_QH;
+	//return allRhos, rho_to_OGe;
 	
 	results := &cat[ [ <k, alpha, allHodge[<k,alpha>]> : alpha in allAlphas[k +1]] : k in [0..kMax]];
 	// Remove the correct duplicates (if I1=I2=I3, keep I3)
@@ -223,6 +228,379 @@ intrinsic HodgeIdeals_NND_QH(f::RngMPolLocElt, kMax::RngIntElt) -> []
 		i eq #results or ideal<Pa|results[i][3]> ne ideal<Pa|results[i+1][3]>];
 	
 	return results;
+end intrinsic;
+
+
+intrinsic rho_branch(weightsData::<>, exponents::[]) -> FldRatElt
+{ Weight function for plane branches, applied to the product of maximal contact elements with the given exponents. }
+	g, Nps, kps, valuesMaxContact := Explode(weightsData);
+	//Q := Rationals();
+	
+	//values := [Q|
+	//	&+[Q| exponents[j +1] * valuesMaxContact[j +1][pt] : j in [0..g]]
+	//: pt in [1..g]];
+	//min, _ := Min([Q| (values[pt] + kps[pt] + 1)/(Nps[pt]) : pt in [1..g]]);
+	
+	//values := [Q| 0 : pt in [1..g]];
+	//for pt in [1..g] do
+	//	for j in [1..g+1] do
+	//		values[pt] +:= exponents[j] * valuesMaxContact[j][pt];
+	//	end for;
+	//end for;
+	
+	//min := (values[1] + kps[1] + 1)/(Nps[1]);
+	//for pt in [2..g] do
+	//	new := (values[pt] + kps[pt] + 1)/(Nps[pt]);
+	//	if new lt min then min := new; end if;
+	//end for;
+	
+	value := exponents[1] * valuesMaxContact[1][1];
+	for j in [2..g+1] do
+		value +:= exponents[j] * valuesMaxContact[j][1];
+	end for;
+	min := (value + kps[1] + 1)/(Nps[1]);
+	for pt in [2..g] do
+		value := exponents[1] * valuesMaxContact[1][pt];
+		for j in [2..g+1] do
+			value +:= exponents[j] * valuesMaxContact[j][pt];
+		end for;
+		value := (value + kps[pt] + 1)/(Nps[pt]);
+		if value lt min then min := value; end if;
+	end for;
+	return min;
+end intrinsic;
+
+
+//function OGeExp_branchImpl(weightsData, rho, exponents, idx)
+//	g := weightsData[1];
+//	if idx eq g+1 then
+//		while rho_branch(weightsData, exponents) lt rho do
+//			exponents[idx] +:= 1;
+//		end while;
+//		return [ exponents ];
+//	end if;
+//	out := OGeExp_branchImpl(weightsData, rho, exponents, idx+1);
+//	while rho_branch(weightsData, exponents) le rho do
+//		exponents[idx] +:= 1;
+//		out cat:= OGeExp_branchImpl(weightsData, rho, exponents, idx+1);
+//	end while;
+//	return out;
+//end function;
+//
+//
+//intrinsic OGeExp_branch(weightsData::<>, rho::FldRatElt) -> []
+//{ Monomial generators with weight >= rho, for plane branches. }
+//	g := weightsData[1];
+//	out := OGeExp_branchImpl(weightsData, rho, [0: i in [0..g]], 1);
+//	necessary := [];
+//	for exp in out do
+//		need := true;
+//		for expNec in necessary do
+//			if &and[ exp[i +1] ge expNec[i +1] : i in [0..g]] then
+//				need := false;
+//				break;
+//			end if;
+//		end for;
+//		if need then
+//			Append(~necessary, exp);
+//		end if;
+//	end for;
+//	
+//	//sumToExps := AssociativeArray();
+//	//for exps in out do
+//	//	sum := &+exps;
+//	//	if IsDefined(sumToExps, sum) then
+//	//		Append(~sumToExps[sum], exps);
+//	//	else
+//	//		sumToExps[sum] := [ exps ];
+//	//	end if;
+//	//end for;
+//	//sums := Sort([i : i in Keys(sumToExps)]);
+//	//necessary := [];
+//	//for sum in sums do
+//	//	for exp in sumToExps[sum] do
+//	//		need := true;
+//	//		for expNec in necessary do
+//	//			if &and[ exp[i] ge expNec[i] : i in [1..g+1]] then
+//	//				need := false;
+//	//				break;
+//	//			end if;
+//	//		end for;
+//	//		if need then
+//	//			Append(~necessary, exp);
+//	//		end if;
+//	//	end for;
+//	//end for;
+//
+//	return necessary;
+//end intrinsic;
+
+
+intrinsic NextOGeExp_branch(genExpPrev::[], weightsData::<>, rho::FldRatElt) -> []
+{ Monomial generators with weight >= rho, for plane branches, given. }
+	g := weightsData[1];
+	genExp := {};
+	pending := {};
+	moreGen := {};
+	//printf "genExp=%o\n", genExp;
+	for exponents in genExpPrev do
+		r := rho_branch(weightsData, exponents);
+		if r ge rho then
+			Include(~genExp, exponents);
+		else
+			for i in [0..g] do
+				exp := exponents;
+				exp[i +1] +:= 1;
+				Include(~pending, exp);
+			end for;
+		end if;
+	end for;
+	//printf "pending=%o\n", pending;
+	for exponents in pending do
+		deleted := false;
+		for gen in genExp do
+			unnecessary := true;
+			for j in [1..g+1] do
+				if exponents[j] lt gen[j] then
+					unnecessary := false;
+					break;
+				end if;
+			end for;
+			if unnecessary then
+				deleted := true;
+				break;
+			end if;
+		end for;
+		if not deleted then
+			Include(~moreGen, exponents);
+		end if;
+	end for;
+	pending := moreGen;
+	//printf "pending=%o\n", pending;
+	for exponents in pending do
+		deleted := false;
+		for gen in moreGen do
+			if gen eq exponents then continue; end if;
+			unnecessary := true;
+			for j in [1..g+1] do
+				if exponents[j] lt gen[j] then
+					unnecessary := false;
+					break;
+				end if;
+			end for;
+			if unnecessary then
+				deleted := true;
+				break;
+			end if;
+		end for;
+		if deleted then
+			Exclude(~moreGen, exponents);
+		end if;
+	end for;
+	//printf "moreGen=%o\n\n", moreGen;
+	return [ exp : exp in genExp ] cat [ exp : exp in moreGen ];
+end intrinsic;
+
+
+intrinsic ExponentsToElement(maxContact::[], exponents::[]) -> RngMPolLocElt
+{}
+	//return &*[maxContact[i]^(exponents[i]) : i in [1..#maxContact]];
+	elt := maxContact[1]^(exponents[1]);
+	for i in [2..#maxContact] do
+		elt *:= maxContact[i]^(exponents[i]);
+	end for;
+	return elt;
+end intrinsic
+
+
+intrinsic HodgeIdealWithData_branch(f::RngMPolLocElt, k::RngIntElt, alpha::FldRatElt, rho_to_OGeExp::Assoc, allRhos::{}, maxContact::[] : reduceBasis:=true, clearDenominators:=true) -> []
+{ Hodge ideal I_k(f^alpha) for plane branches, given data about OGe. }
+	assert k ge 0;
+	assert alpha gt 0 and alpha le 1;
+	
+	Z := Integers();
+	Q := Rationals();
+	Pa<x,y> := Universe(maxContact);
+	Ra<a> := BaseRing(Pa);
+	fa := Evaluate(f, [x,y]);
+	
+	// Õ^{>=rho_i} > Õ^{>=alpha+k} = Õ^{>=rho_{i+1}}
+	rho := Min({Q| rho : rho in allRhos | rho ge alpha + k});
+	
+	gen := [Pa| ExponentsToElement(maxContact, exponents) : exponents in rho_to_OGeExp[rho]];
+	
+	if k gt 0 then
+		Hodge_kMinus1 := HodgeIdealWithData_branch(f, k-1, alpha, rho_to_OGeExp, allRhos, maxContact);
+		moreGen := &cat[[Pa| fa*Pa!Der(g,1) - (a+k-1)*Pa!g*Der(fa,1),
+			fa*Pa!Der(g,2) - (a+k-1)*Pa!g*Der(fa,2)] :
+			g in Hodge_kMinus1 ];
+			
+		//moreGen := [Pa| fa*Pa!Der(g,1) - (a+k-1)*Pa!g*Der(fa,1)
+		//	: g in Hodge_kMinus1 ] cat
+		//	[Pa| fa*Pa!Der(g,2) - (a+k-1)*Pa!g*Der(fa,2)
+		//	: g in Hodge_kMinus1 ];
+			
+		//moreGen := [Pa| 0 : i in [1..2*#Hodge_kMinus1]];
+		//for i in [1..#Hodge_kMinus1] do
+		//	g := Hodge_kMinus1[i];
+		//	moreGen[2*i] := fa*Pa!Der(g,1) - (a+k-1)*Pa!g*Der(fa,1);
+		//	moreGen[2*i+1] := fa*Pa!Der(g,2) - (a+k-1)*Pa!g*Der(fa,2);
+		//end for;
+		gen cat:= moreGen;
+	end if;
+	
+	// Prettier basis
+	if reduceBasis then
+		PaNotLocal := PolynomialRing(Ra,2);
+		gen := ChangeUniverse(Reduce(Basis(ideal<PaNotLocal|gen>)), Pa);
+		Sort(~gen);
+	end if;
+	if clearDenominators then
+		result := [Pa| 0 : g in gen];
+		for i->g in gen do
+			commonDenomIn_a := LCM({Denominator(c) : c in Coefficients(g)});
+			gPretty := g * commonDenomIn_a;
+			commonDenomInteger := LCM({Z| Denominator(cc) : cc in Coefficients(Numerator(c)), c in Coefficients(gPretty)});
+			gPretty *:= commonDenomInteger;
+			//Append(~result, gPretty);
+			result[i] := gPretty;
+		end for;
+		return result;
+	else
+		return gen;
+	end if;
+end intrinsic;
+
+
+intrinsic HodgeIdeals_branch(f::RngMPolLocElt, kMax::RngIntElt : reduceBasis:=true, clearDenominators:=true) -> []
+{ Hodge ideals I_k(f^alpha) for all 0<=k<=kMax and all 0<alpha<=1, for plane branches. }
+	assert kMax ge 0;
+	
+	Z := Integers();
+	Q := Rationals();
+	semigroup := SemiGroup(f);
+	g := #semigroup -1;
+	planeBranchNumbers := PlaneBranchNumbers(semigroup);
+	g, c, betas, es, ms, ns, qs, _betas, _ms, Nps, kps, Ns, ks := Explode(planeBranchNumbers);
+	// j -> which maximal contact element (0:x, 1:y, ..., g:...)
+	// i -> which rupture point (1..g)
+	valuesMaxContact :=
+	[
+		[Q| ns[i +1] * _betas[i +1] / es[j-1 +1] : i in [1..j-1]]
+		cat
+		[Q| _betas[j +1] / es[i +1] : i in [Max(1,j)..g]]
+	: j in [0..g]];
+	weightsData := <g, Nps, kps, valuesMaxContact>;
+	//weights := [ Min([(valuesMaxContact[j +1][i] + kps[i] + 1)/(Nps[i]) : i in [1..g]]) : j in [0..g]];
+	
+	//printf "weights = %o\n", weightsData;
+	
+	P := Parent(f);
+	R := BaseRing(P);
+	Ra<a> := RationalFunctionField(R,1);
+	Pa<x,y> := LocalPolynomialRing(Ra,2);
+	fa := Evaluate(f, [x,y]);
+	
+	maxContact := [Pa| Evaluate(h, [x,y]) : h in MaxContactElements(f)];
+	
+	rho_to_OGeExp := AssociativeArray();
+	allRhos := {Q| };
+	
+	genExp := [ [Z| 0 : i in [0..g]] ];
+	rho := rho_branch(weightsData, genExp[1]);
+	rho_to_OGeExp[rho] := genExp;
+	Include(~allRhos, rho);
+	while rho le (1 + kMax) do
+		// The next rho is the minimum value of rho_branch() greater than rho
+		rhoNext := rho+1; // upper bound of the next rho
+		for exponents in genExp do
+			r := rho_branch(weightsData, exponents);
+			if r gt rho and r lt rhoNext then rhoNext := r; end if;
+			for i in [0..g] do
+				exp := exponents;
+				exp[i +1] +:= 1;
+				r := rho_branch(weightsData, exp);
+				if r gt rho and r lt rhoNext then rhoNext := r; end if;
+			end for;
+		end for;
+		rho := rhoNext;
+		
+		genExp := NextOGeExp_branch(genExp, weightsData, rho);
+		rho_to_OGeExp[rho] := genExp;
+		Include(~allRhos, rho);
+	end while;
+	
+	//for rho in allRhos do printf "%o: ", rho; prt([ExponentsToElement(maxContact,h) : h in rho_to_OGeExp[rho]]); printf "\n"; end for;
+	
+	allHodge := AssociativeArray();
+	allAlphas := [];
+	for k in [0..kMax] do
+		alphas := [Q| rho + 1 - Ceiling(rho) : rho in allRhos | rho lt k+1];
+		Sort(~alphas);
+		if 1 notin alphas then Append(~alphas, 1); end if;
+		Append(~allAlphas, alphas);
+		
+		for alpha in alphas do
+			allHodge[<k,alpha>] := HodgeIdealWithData_branch(f, k, alpha, rho_to_OGeExp, allRhos, maxContact : reduceBasis:=reduceBasis, clearDenominators:=clearDenominators);
+		end for;
+	end for;
+	
+	results := [ <k, alpha, allHodge[<k,alpha>]> : alpha in allAlphas[k +1], k in [0..kMax]];
+	
+	// Remove the correct duplicates (if I1=I2=I3, keep I3)
+	//results := [];
+	//for i->tup in tuples do
+	//	if i eq #tuples then
+	//		Append(~results, tup);
+	//	else
+	//		nextIdeal := ideal<Pa|tuples[i+1][3]>;
+	//		different := false;
+	//		for gen in tup[3] do
+	//			if gen notin nextIdeal then
+	//				different := true;
+	//				break;
+	//			end if;
+	//		end for;
+	//		if different then
+	//			Append(~results, tup);
+	//		end if;
+	//	end if;
+	//end for;
+	
+	results := [ results[i] : i in [1..#results] |
+		i eq #results or ideal<Pa|results[i][3]> ne ideal<Pa|results[i+1][3]>];
+	
+	//ideals := [ ideal<Pa|tup[3]> : tup in results ];
+	//results := [ results[i] : i in [1..#results] |
+	//	i eq #results or ideals[i] notsubset ideals[i+1]];
+	
+	return results;
+	
+	//chosen := [false : i in [1..#results]];
+	//ideal := Pa;
+	//nextIdeal := Pa;
+	//for i in [1..#results] do
+	//	if i eq #results then
+	//		chosen[i] := true;
+	//	else
+	//		if i eq 1 then
+	//			ideal := ideal<Pa|results[i][3]>;
+	//		else
+	//			ideal := nextIdeal;
+	//		end if;
+	//		nextIdeal := ideal<Pa|results[i+1][3]>;
+	//		//for gen in results[i][3] do
+	//		//	if gen notin nextIdeal then
+	//		//		chosen[i] := true;
+	//		//		break;
+	//		//	end if;
+	//		//end for;
+	//		if ideal ne nextIdeal then
+	//			chosen[i] := true;
+	//		end if;
+	//	end if;
+	//end for;
+	//return [ res : i->res in results | chosen[i] ];
 end intrinsic;
 
 
