@@ -18,6 +18,7 @@ printDiagramsSideBySide := true;
 //NND_QH                  := false; // Newton non-degenerate or quasihomogeneous
 //branch                  := true;
 printMonomialsInMaxCont := false;
+printHodge              := true;
 quitOnFinish            := true;
 
 kMax := 1;
@@ -40,6 +41,7 @@ fString := "x^7+x^4*y^2+y^4"; NND_QH := true; branch := true;
 //fString := "(y^2+x^3)^2 + x^5*y"; NND_QH := false; branch := true;
 //fString := "(y^2+x^7)^2 + x^13*y"; NND_QH := false; branch := true;
 //fString := "(y^5+x^13)^3 + x^32*y^3"; NND_QH := false; branch := true;
+//fString := "(x^3-y^2)^5 -x^18"; NND_QH := false; branch := true;
 
 P<x,y>:=LocalPolynomialRing(Q,2);
 //PPP<X,Y>:=LocalPolynomialRing(Rationals(),2);
@@ -134,17 +136,20 @@ end if;
 
 if NND_QH then
 	h_NND_QH := HodgeIdeals_NND_QH(f, kMax);
-	kLast := 0;
-	for tup in h_NND_QH do
-		k, alpha, I := Explode(tup);
-		if k ne kLast then print "---"; end if;
-		printf "%-16o", Sprintf("I_%o(f^%o): ", k, alpha);
-		prt(I); printf "\n";
-		kLast := k;
-	end for;
+	h := h_NND_QH;
+	if printHodge then
+		kLast := 0;
+		for tup in h_NND_QH do
+			k, alpha, I := Explode(tup);
+			if k ne kLast then print "---"; end if;
+			printf "%-16o", Sprintf("I_%o(f^%o): ", k, alpha);
+			prt(I); printf "\n";
+			kLast := k;
+		end for;
+		printf "\n";
+	end if;
 	if branch then
-		print "====================";	
-		printf "\nImplementations give equal results?\n";
+		printf "Implementations give equal results?\n";
 		h_branch := HodgeIdeals_branch(f, kMax);
 		if #h_NND_QH ne #h_branch then
 			printf "false\n";
@@ -156,8 +161,9 @@ if NND_QH then
 					h_NND_QH[i][3] ne ChangeUniverse(h_branch[i][3], Universe(h_NND_QH[i][3]))
 				then
 					equal := false;
-					printf "false: %o\n", i;
-					prt(h_branch[i][3]); printf "\n";
+					printf "false:\n";
+					printf "I_NND_QH_%o(f^%o) = ", h_NND_QH[i][1], h_NND_QH[i][2]; prt(h_NND_QH[i][3]); printf "\n";
+					printf "I_branch_%o(f^%o) = ", h_NND_QH[i][1], h_NND_QH[i][2]; prt(h_branch[i][3]); printf "\n";
 					
 				end if;
 			end for;
@@ -166,28 +172,52 @@ if NND_QH then
 	end if;
 else
 	h_branch := HodgeIdeals_branch(f, kMax : reduceBasis:=true);
-	Pa := Universe(h_branch[1][3]);
-	maxContact := [Pa| Evaluate(h, [x,y]) : h in MaxContactElements(f) cat [f]];
-	kLast := 0;
-	for tup in h_branch do
-		k, alpha, I := Explode(tup);
-		if k ne kLast then print "===================="; end if;
-			printf "%-16o", Sprintf("I_%o(f^%o): ", k, alpha);
-			if printMonomialsInMaxCont then
-			S, extra := MonomialSequence(I, maxContact);
-			printf"[";for i->l in S do printf"%o%o",&cat Split(Sprintf("%o",l),"*"),i lt#S select", "else"";end for;printf"]";printf"\n";
-			if #extra gt 0 then
-				for i->g in extra do
-					printf "g%o= %o\n", i, g;
-				end for;
-				printf "\n";
+	h := h_branch;
+	if printHodge then
+		Pa := Universe(h_branch[1][3]);
+		maxContact := [Pa| Evaluate(h, [x,y]) : h in MaxContactElements(f) cat [f]];
+		kLast := 0;
+		for tup in h_branch do
+			k, alpha, I := Explode(tup);
+			if k ne kLast then print "\n===================="; end if;
+				printf "%-16o", Sprintf("I_%o(f^%o): ", k, alpha);
+				if printMonomialsInMaxCont then
+				S, extra := MonomialSequence(I, maxContact);
+				printf"[";for i->l in S do printf"%o%o",&cat Split(Sprintf("%o",l),"*"),i lt#S select", "else"";end for;printf"]";printf"\n";
+				if #extra gt 0 then
+					for i->g in extra do
+						printf "g%o= %o\n", i, g;
+					end for;
+					printf "\n";
+				end if;
+			else
+				prt(I); printf "\n";
 			end if;
-		else
-			prt(I); printf "\n";
-		end if;
-		kLast := k;
-	end for;
+			kLast := k;
+		end for;
+		printf "\n";
+	end if;
 end if;
+
+printf "Multipliers coincide up to 1?\n";
+Js := MultiplierIdeals(f); // : MaxJN:=1
+h := [ h[i] : i in [1..#Js] ]; // k=0 and first k=1
+Pa := Universe(h[1][3]);
+
+equal := true;
+for i in [2..#Js] do
+	if i lt #Js and h[i][2] ne Js[i+1][2] then
+		printf "false: Different jumping number: Hodge %o, multipliers %o\n", h[i][2], Js[i+1][2];
+		equal := false;
+	elif ideal<Pa| h[i][3]> ne ideal<Pa| Js[i][1]> then
+		printf "false: Different ideals: alpha = %o\n", h[i][2];
+		printf "I = "; prt(h[i][3]); printf "\n";
+		printf "J = "; prt(Js[i][1]); printf "\n";
+		equal := false;
+	end if;
+end for;
+if equal then printf "true\n"; end if;
+
 
 
 printf "\n\nFinished\n";
