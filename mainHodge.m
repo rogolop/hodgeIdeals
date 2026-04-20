@@ -17,6 +17,7 @@ printBranchData         := false;
 printDiagramsSideBySide := true;
 //NND_QH                  := false; // Newton non-degenerate or quasihomogeneous
 //branch                  := true;
+printIntegralClosure    := false;
 printMonomialsInMaxCont := false;
 printHodge              := true;
 quitOnFinish            := true;
@@ -33,6 +34,7 @@ kMax := 1;
 //fString := "y^3 + x^7"; NND_QH := true; branch := true;
 //fString := "x^3 + y^7"; NND_QH := true; branch := true;
 //fString := "y^5 + x^17"; NND_QH := true; branch := true;
+//fString := "x^7+y^4"; NND_QH := true; branch := true;
 
 // Curve type: QH no,  NND yes, branch yes
 fString := "x^7+x^4*y^2+y^4"; NND_QH := true; branch := true;
@@ -144,6 +146,25 @@ if NND_QH then
 			if k ne kLast then print "---"; end if;
 			printf "%-16o", Sprintf("I_%o(f^%o): ", k, alpha);
 			prt(I); printf "\n";
+			
+			if printIntegralClosure then
+				Pa := Universe(I);
+				I := ideal<Pa| I>;
+				Icl := IntegralClosure(I);
+				Icl := ideal<Pa| Icl>;
+				if I eq Icl then
+					printf "Integrally closed\n";
+				else
+					printf "Integral closure: ";
+					prt(Basis(Icl));
+					printf "\n";
+					P, v := LogResolution(Icl);
+					print P;
+					printf "v(int.cl.) = %o\n", v;
+				end if;
+				printf "\n";
+			end if;
+
 			kLast := k;
 		end for;
 		printf "\n";
