@@ -132,7 +132,7 @@ intrinsic HodgeIdealWithData_NND_QH(f::RngMPolLocElt, k::RngIntElt, alpha::FldRa
 	
 	if k gt 0 then
 		Hodge_kMinus1 := HodgeIdealWithData_NND_QH(f, k-1, alpha, rho_to_OGe, allRhos);
-		moreGen := &cat[[Pa| fa*Pa!Der(g,1) - (a+k-1)*Pa!g*Der(fa,1),
+		moreGen := &cat[[Pa| fa*Pa!g, fa*Pa!Der(g,1) - (a+k-1)*Pa!g*Der(fa,1),
 			fa*Pa!Der(g,2) - (a+k-1)*Pa!g*Der(fa,2)] :
 			g in Hodge_kMinus1 ];
 		gen cat:= moreGen;
@@ -448,7 +448,7 @@ intrinsic HodgeIdealWithData_branch(f::RngMPolLocElt, k::RngIntElt, alpha::FldRa
 	
 	if k gt 0 then
 		Hodge_kMinus1 := HodgeIdealWithData_branch(f, k-1, alpha, rho_to_OGeExp, allRhos, maxContact);
-		moreGen := &cat[[Pa| fa*Pa!Der(g,1) - (a+k-1)*Pa!g*Der(fa,1),
+		moreGen := &cat[[Pa| fa*Pa!g, fa*Pa!Der(g,1) - (a+k-1)*Pa!g*Der(fa,1),
 			fa*Pa!Der(g,2) - (a+k-1)*Pa!g*Der(fa,2)] :
 			g in Hodge_kMinus1 ];
 			
