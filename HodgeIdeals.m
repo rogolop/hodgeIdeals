@@ -51,7 +51,7 @@ intrinsic Der(f::RngMPolLocElt, i::RngIntElt) -> RngMPolLocElt
 	return df;
 end intrinsic;
 
-intrinsic HodgeIdeal_NND_QH(f::RngMPolLocElt, k::RngIntElt, alpha::FldRatElt) -> []
+intrinsic HodgeIdeal_NND_QH(f::RngMPolLocElt, k::RngIntElt, alpha::FldRatElt : reduceBasis:=true, clearDenominators:=true) -> []
 { Hodge ideal I_k(f^alpha) for Newton non-degenerate or quasihomogeneous plane curves. }
 	assert k ge 0;
 	assert alpha gt 0 and alpha le 1;
@@ -86,9 +86,26 @@ intrinsic HodgeIdeal_NND_QH(f::RngMPolLocElt, k::RngIntElt, alpha::FldRatElt) ->
 		gen cat:= moreGen;
 	end if;
 	
-	PaNotLocal := PolynomialRing(Ra,2);
-	return Sort(ChangeUniverse(Reduce(Basis(ideal<PaNotLocal|gen>)), Pa));
-	
+	// Prettier basis
+	Z := Integers();
+	if reduceBasis then
+		PaNotLocal := PolynomialRing(Ra,2);
+		gen := Sort(ChangeUniverse(Reduce(Basis(ideal<PaNotLocal|gen>)), Pa));
+	end if;
+	if clearDenominators then
+		result := [Pa| ];
+		for g in gen do
+			commonDenomIn_a := LCM([Denominator(c) : c in Coefficients(g)]);
+			gPretty := g * commonDenomIn_a;
+			commonDenomInteger := LCM(&cat[ [Z| Denominator(cc) : cc in Coefficients(Numerator(c))] : c in Coefficients(gPretty)]);
+			gPretty *:= commonDenomInteger;
+			Append(~result, gPretty);
+		end for;
+		return result;
+	else
+		return gen;
+	end if;
+
 	//return gen;
 end intrinsic;
 

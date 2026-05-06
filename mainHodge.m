@@ -148,6 +148,9 @@ if NND_QH then
 			if k ne kLast then print "---"; end if;
 			printf "%-16o", Sprintf("I_%o(f^%o): ", k, alpha);
 			prt(I); printf "\n";
+			//h_discard := HodgeIdeal_NND_QH(f, k, alpha);
+			//print I eq ChangeUniverse(h_discard, Universe(I));
+			//printf "\n";
 			
 			if printIntegralClosure then
 				Pa := Universe(I);
@@ -175,7 +178,7 @@ if NND_QH then
 		printf "Implementations give equal results?\n";
 		h_branch := HodgeIdeals_branch(f, kMax);
 		if #h_NND_QH ne #h_branch then
-			printf "false\n";
+			printf "false: different number of ideals\n\n";
 		else
 			equal := true;
 			for i in [1..#h_branch] do
@@ -186,11 +189,11 @@ if NND_QH then
 					equal := false;
 					printf "false:\n";
 					printf "I_NND_QH_%o(f^%o) = ", h_NND_QH[i][1], h_NND_QH[i][2]; prt(h_NND_QH[i][3]); printf "\n";
-					printf "I_branch_%o(f^%o) = ", h_NND_QH[i][1], h_NND_QH[i][2]; prt(h_branch[i][3]); printf "\n";
+					printf "I_branch_%o(f^%o) = ", h_NND_QH[i][1], h_NND_QH[i][2]; prt(h_branch[i][3]); printf "\n\n";
 					
 				end if;
 			end for;
-			if equal then printf "true\n"; end if;
+			if equal then printf "true\n\n"; end if;
 		end if;
 	end if;
 else

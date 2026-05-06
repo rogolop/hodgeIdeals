@@ -34,6 +34,7 @@ I_1(f^1):       y6, x2y5, x4y4, x5y3, x7y2, x8y+(-2a+1)xy5, x10+(-4a+1)x3y4
 
 Implementations give equal results?
 true
+
 Multipliers coincide up to 1?
 true
 
