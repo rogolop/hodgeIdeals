@@ -35,9 +35,11 @@ kMax := 1;
 //fString := "x^3 + y^7"; NND_QH := true; branch := true;
 //fString := "y^5 + x^17"; NND_QH := true; branch := true;
 //fString := "x^7+y^4"; NND_QH := true; branch := true;
+//fString := "y^5 + x^6"; NND_QH := true; branch := true;
 
 // Curve type: QH no,  NND yes, branch yes
 fString := "x^7+x^4*y^2+y^4"; NND_QH := true; branch := true;
+//fString := "y^5 + x^17 + x^15*y"; NND_QH := true; branch := true;
 
 // Curve type: QH no,  NND no,  branch yes
 //fString := "(y^2+x^3)^2 + x^5*y"; NND_QH := false; branch := true;
@@ -201,8 +203,8 @@ else
 		for tup in h_branch do
 			k, alpha, I := Explode(tup);
 			if k ne kLast then print "\n===================="; end if;
-				printf "%-16o", Sprintf("I_%o(f^%o): ", k, alpha);
-				if printMonomialsInMaxCont then
+			printf "%-16o", Sprintf("I_%o(f^%o): ", k, alpha);
+			if printMonomialsInMaxCont then
 				S, extra := MonomialSequence(I, maxContact);
 				printf"[";for i->l in S do printf"%o%o",&cat Split(Sprintf("%o",l),"*"),i lt#S select", "else"";end for;printf"]";printf"\n";
 				if #extra gt 0 then
@@ -214,6 +216,26 @@ else
 			else
 				prt(I); printf "\n";
 			end if;
+			
+			
+			if printIntegralClosure then
+				Pa := Universe(I);
+				I := ideal<Pa| I>;
+				Icl := IntegralClosure(I);
+				Icl := ideal<Pa| Icl>;
+				if I eq Icl then
+					printf "Integrally closed\n";
+				else
+					printf "Integral closure: ";
+					prt(Basis(Icl));
+					printf "\n";
+					P, v := LogResolution(Icl);
+					print P;
+					printf "v(int.cl.) = %o\n", v;
+				end if;
+				printf "\n";
+			end if;
+			
 			kLast := k;
 		end for;
 		printf "\n";
