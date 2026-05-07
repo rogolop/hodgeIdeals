@@ -109,7 +109,7 @@ intrinsic HodgeIdeal_NND_QH(f::RngMPolLocElt, k::RngIntElt, alpha::FldRatElt : r
 	//return gen;
 end intrinsic;
 
-intrinsic HodgeIdealWithData_NND_QH(f::RngMPolLocElt, k::RngIntElt, alpha::FldRatElt, rho_to_OGe::Assoc, allRhos::[] : reduceBasis:=true, clearDenominators:=true) -> []
+intrinsic HodgeIdealWithData_NND_QH(f::RngMPolLocElt, k::RngIntElt, alpha::FldRatElt, rho_to_OGe::Assoc, allRhos::[] : reduceBasis:=true, clearDenominators:=true, extraInfo:=false) -> []
 { Hodge ideal I_k(f^alpha) for Newton non-degenerate or quasihomogeneous plane curves, given data about OGe_NND_QH. }
 	assert k ge 0;
 	assert alpha gt 0 and alpha le 1;
@@ -128,14 +128,22 @@ intrinsic HodgeIdealWithData_NND_QH(f::RngMPolLocElt, k::RngIntElt, alpha::FldRa
 	rho := Min([Q| rho : rho in allRhos | rho ge alpha + k]);
 	
 	//gen := [Pa| Evaluate(g, [x,y]) : g in rho_to_OGe[rho]];
-	gen := rho_to_OGe[rho];
+	OGe := rho_to_OGe[rho];
+	gen := OGe;
+	fI_kMinus1 := [Pa| ];
+	derGenI_kMinus1 := [Pa| ];
 	
 	if k gt 0 then
 		Hodge_kMinus1 := HodgeIdealWithData_NND_QH(f, k-1, alpha, rho_to_OGe, allRhos);
-		moreGen := &cat[[Pa| fa*Pa!g, fa*Pa!Der(g,1) - (a+k-1)*Pa!g*Der(fa,1),
-			fa*Pa!Der(g,2) - (a+k-1)*Pa!g*Der(fa,2)] :
-			g in Hodge_kMinus1 ];
-		gen cat:= moreGen;
+		ChangeUniverse(~Hodge_kMinus1, Pa);
+		fI_kMinus1 := [Pa| fa*g : g in Hodge_kMinus1];
+		derGenI_kMinus1 := [Pa| 0 : i in [1..(2*#Hodge_kMinus1)]];
+		for i->g in Hodge_kMinus1 do
+			derGenI_kMinus1[2*i-1] := fa*Der(g,1) - (a+k-1)*g*Der(fa,1);
+			derGenI_kMinus1[2*i]   := fa*Der(g,2) - (a+k-1)*g*Der(fa,2);
+		end for;
+		gen cat:= fI_kMinus1;
+		gen cat:= derGenI_kMinus1;
 	end if;
 	
 	// Prettier basis
@@ -152,14 +160,14 @@ intrinsic HodgeIdealWithData_NND_QH(f::RngMPolLocElt, k::RngIntElt, alpha::FldRa
 			gPretty *:= commonDenomInteger;
 			Append(~result, gPretty);
 		end for;
-		return result;
+		return result, OGe, fI_kMinus1, derGenI_kMinus1;
 	else
-		return gen;
+		return gen, OGe, fI_kMinus1, derGenI_kMinus1;
 	end if;
 end intrinsic;
 
 
-intrinsic HodgeIdeals_NND_QH(f::RngMPolLocElt, kMax::RngIntElt : reduceBasis:=true, clearDenominators:=true) -> []
+intrinsic HodgeIdeals_NND_QH(f::RngMPolLocElt, kMax::RngIntElt : reduceBasis:=true, clearDenominators:=true, extraInfo:=false) -> []
 { Hodge ideals I_k(f^alpha) for all 0<=k<=kMax and all 0<alpha<=1, for Newton non-degenerate or quasihomogeneous plane curves. }
 	assert kMax ge 0;
 	
@@ -216,6 +224,7 @@ intrinsic HodgeIdeals_NND_QH(f::RngMPolLocElt, kMax::RngIntElt : reduceBasis:=tr
 	
 	allHodge := AssociativeArray();
 	allAlphas := [];
+	allExtra := AssociativeArray();
 	for k in [0..kMax] do
 		alphas := [Q| rho + 1 - Ceiling(rho) : rho in allRhos | rho lt k+1];
 		Sort(~alphas);
@@ -223,9 +232,16 @@ intrinsic HodgeIdeals_NND_QH(f::RngMPolLocElt, kMax::RngIntElt : reduceBasis:=tr
 		Append(~allAlphas, alphas);
 		
 		for alpha in alphas do
-			gen := HodgeIdealWithData_NND_QH(f, k, alpha, rho_to_OGe, allRhos : reduceBasis:=reduceBasis, clearDenominators:=clearDenominators);
-			//ChangeUniverse(~gen, Pa);
-			allHodge[<k,alpha>] := gen;
+			if extraInfo then
+				gen, OGe, fI_kMinus1, derGenI_kMinus1 := HodgeIdealWithData_NND_QH(f, k, alpha, rho_to_OGe, allRhos : reduceBasis:=reduceBasis, clearDenominators:=clearDenominators, extraInfo:=true);
+				//ChangeUniverse(~gen, Pa);
+				allHodge[<k,alpha>] := gen;
+				allExtra[<k,alpha>] := [OGe, fI_kMinus1, derGenI_kMinus1];
+			else
+				gen := HodgeIdealWithData_NND_QH(f, k, alpha, rho_to_OGe, allRhos : reduceBasis:=reduceBasis, clearDenominators:=clearDenominators, extraInfo:=false);
+				//ChangeUniverse(~gen, Pa);
+				allHodge[<k,alpha>] := gen;
+			end if;
 		end for;
 	end for;
 	/*
@@ -244,7 +260,11 @@ intrinsic HodgeIdeals_NND_QH(f::RngMPolLocElt, kMax::RngIntElt : reduceBasis:=tr
 	results := [ results[i] : i in [1..#results] |
 		i eq #results or ideal<Pa|results[i][3]> ne ideal<Pa|results[i+1][3]>];
 	
-	return results;
+	if extraInfo then
+		return results, allExtra;
+	else
+		return results;
+	end if;
 end intrinsic;
 
 
@@ -286,71 +306,6 @@ intrinsic rho_branch(weightsData::<>, exponents::[]) -> FldRatElt
 	end for;
 	return min;
 end intrinsic;
-
-
-//function OGeExp_branchImpl(weightsData, rho, exponents, idx)
-//	g := weightsData[1];
-//	if idx eq g+1 then
-//		while rho_branch(weightsData, exponents) lt rho do
-//			exponents[idx] +:= 1;
-//		end while;
-//		return [ exponents ];
-//	end if;
-//	out := OGeExp_branchImpl(weightsData, rho, exponents, idx+1);
-//	while rho_branch(weightsData, exponents) le rho do
-//		exponents[idx] +:= 1;
-//		out cat:= OGeExp_branchImpl(weightsData, rho, exponents, idx+1);
-//	end while;
-//	return out;
-//end function;
-//
-//
-//intrinsic OGeExp_branch(weightsData::<>, rho::FldRatElt) -> []
-//{ Monomial generators with weight >= rho, for plane branches. }
-//	g := weightsData[1];
-//	out := OGeExp_branchImpl(weightsData, rho, [0: i in [0..g]], 1);
-//	necessary := [];
-//	for exp in out do
-//		need := true;
-//		for expNec in necessary do
-//			if &and[ exp[i +1] ge expNec[i +1] : i in [0..g]] then
-//				need := false;
-//				break;
-//			end if;
-//		end for;
-//		if need then
-//			Append(~necessary, exp);
-//		end if;
-//	end for;
-//	
-//	//sumToExps := AssociativeArray();
-//	//for exps in out do
-//	//	sum := &+exps;
-//	//	if IsDefined(sumToExps, sum) then
-//	//		Append(~sumToExps[sum], exps);
-//	//	else
-//	//		sumToExps[sum] := [ exps ];
-//	//	end if;
-//	//end for;
-//	//sums := Sort([i : i in Keys(sumToExps)]);
-//	//necessary := [];
-//	//for sum in sums do
-//	//	for exp in sumToExps[sum] do
-//	//		need := true;
-//	//		for expNec in necessary do
-//	//			if &and[ exp[i] ge expNec[i] : i in [1..g+1]] then
-//	//				need := false;
-//	//				break;
-//	//			end if;
-//	//		end for;
-//	//		if need then
-//	//			Append(~necessary, exp);
-//	//		end if;
-//	//	end for;
-//	//end for;
-//
-//	return necessary;
-//end intrinsic;
 
 
 intrinsic NextOGeExp_branch(genExpPrev::[], weightsData::<>, rho::FldRatElt) -> []
@@ -430,7 +385,7 @@ intrinsic ExponentsToElement(maxContact::[], exponents::[]) -> RngMPolLocElt
 end intrinsic
 
 
-intrinsic HodgeIdealWithData_branch(f::RngMPolLocElt, k::RngIntElt, alpha::FldRatElt, rho_to_OGeExp::Assoc, allRhos::{}, maxContact::[] : reduceBasis:=true, clearDenominators:=true) -> []
+intrinsic HodgeIdealWithData_branch(f::RngMPolLocElt, k::RngIntElt, alpha::FldRatElt, rho_to_OGeExp::Assoc, allRhos::{}, maxContact::[] : reduceBasis:=true, clearDenominators:=true, extraInfo:=false) -> []
 { Hodge ideal I_k(f^alpha) for plane branches, given data about OGe. }
 	assert k ge 0;
 	assert alpha gt 0 and alpha le 1;
@@ -444,13 +399,25 @@ intrinsic HodgeIdealWithData_branch(f::RngMPolLocElt, k::RngIntElt, alpha::FldRa
 	// Õ^{>=rho_i} > Õ^{>=alpha+k} = Õ^{>=rho_{i+1}}
 	rho := Min({Q| rho : rho in allRhos | rho ge alpha + k});
 	
-	gen := [Pa| ExponentsToElement(maxContact, exponents) : exponents in rho_to_OGeExp[rho]];
+	OGe := [Pa| ExponentsToElement(maxContact, exponents) : exponents in rho_to_OGeExp[rho]];
+	gen := OGe;
+	fI_kMinus1 := [Pa| ];
+	derGenI_kMinus1 := [Pa| ];
 	
 	if k gt 0 then
 		Hodge_kMinus1 := HodgeIdealWithData_branch(f, k-1, alpha, rho_to_OGeExp, allRhos, maxContact);
-		moreGen := &cat[[Pa| fa*Pa!g, fa*Pa!Der(g,1) - (a+k-1)*Pa!g*Der(fa,1),
-			fa*Pa!Der(g,2) - (a+k-1)*Pa!g*Der(fa,2)] :
-			g in Hodge_kMinus1 ];
+		ChangeUniverse(~Hodge_kMinus1, Pa);
+		fI_kMinus1 := [Pa| fa*g : g in Hodge_kMinus1];
+		derGenI_kMinus1 := [Pa| 0 : i in [1..(2*#Hodge_kMinus1)]];
+		for i->g in Hodge_kMinus1 do
+			derGenI_kMinus1[2*i-1] := fa*Der(g,1) - (a+k-1)*g*Der(fa,1);
+			derGenI_kMinus1[2*i]   := fa*Der(g,2) - (a+k-1)*g*Der(fa,2);
+		end for;
+		gen cat:= fI_kMinus1;
+		gen cat:= derGenI_kMinus1;
+		//moreGen := &cat[[Pa| fa*Pa!g, fa*Pa!Der(g,1) - (a+k-1)*Pa!g*Der(fa,1),
+		//	fa*Pa!Der(g,2) - (a+k-1)*Pa!g*Der(fa,2)] :
+		//	g in Hodge_kMinus1 ];
 			
 		//moreGen := [Pa| fa*Pa!Der(g,1) - (a+k-1)*Pa!g*Der(fa,1)
 		//	: g in Hodge_kMinus1 ] cat
@@ -463,14 +430,13 @@ intrinsic HodgeIdealWithData_branch(f::RngMPolLocElt, k::RngIntElt, alpha::FldRa
 		//	moreGen[2*i] := fa*Pa!Der(g,1) - (a+k-1)*Pa!g*Der(fa,1);
 		//	moreGen[2*i+1] := fa*Pa!Der(g,2) - (a+k-1)*Pa!g*Der(fa,2);
 		//end for;
-		gen cat:= moreGen;
+		//gen cat:= moreGen;
 	end if;
 	
 	// Prettier basis
 	if reduceBasis then
 		PaNotLocal := PolynomialRing(Ra,2);
-		gen := ChangeUniverse(Reduce(Basis(ideal<PaNotLocal|gen>)), Pa);
-		Sort(~gen);
+		gen := Sort(ChangeUniverse(Reduce(Basis(ideal<PaNotLocal|gen>)), Pa));
 	end if;
 	if clearDenominators then
 		result := [Pa| 0 : g in gen];
@@ -482,14 +448,14 @@ intrinsic HodgeIdealWithData_branch(f::RngMPolLocElt, k::RngIntElt, alpha::FldRa
 			//Append(~result, gPretty);
 			result[i] := gPretty;
 		end for;
-		return result;
+		return result, OGe, fI_kMinus1, derGenI_kMinus1;
 	else
-		return gen;
+		return gen, OGe, fI_kMinus1, derGenI_kMinus1;
 	end if;
 end intrinsic;
 
 
-intrinsic HodgeIdeals_branch(f::RngMPolLocElt, kMax::RngIntElt : reduceBasis:=true, clearDenominators:=true) -> []
+intrinsic HodgeIdeals_branch(f::RngMPolLocElt, kMax::RngIntElt : reduceBasis:=true, clearDenominators:=true, extraInfo:=false) -> []
 { Hodge ideals I_k(f^alpha) for all 0<=k<=kMax and all 0<alpha<=1, for plane branches. }
 	assert kMax ge 0;
 	
@@ -551,6 +517,7 @@ intrinsic HodgeIdeals_branch(f::RngMPolLocElt, kMax::RngIntElt : reduceBasis:=tr
 	
 	allHodge := AssociativeArray();
 	allAlphas := [];
+	allExtra := AssociativeArray();
 	for k in [0..kMax] do
 		alphas := [Q| rho + 1 - Ceiling(rho) : rho in allRhos | rho lt k+1];
 		Sort(~alphas);
@@ -559,6 +526,17 @@ intrinsic HodgeIdeals_branch(f::RngMPolLocElt, kMax::RngIntElt : reduceBasis:=tr
 		
 		for alpha in alphas do
 			allHodge[<k,alpha>] := HodgeIdealWithData_branch(f, k, alpha, rho_to_OGeExp, allRhos, maxContact : reduceBasis:=reduceBasis, clearDenominators:=clearDenominators);
+			
+			if extraInfo then
+				gen, OGe, fI_kMinus1, derGenI_kMinus1 := HodgeIdealWithData_branch(f, k, alpha, rho_to_OGeExp, allRhos, maxContact : reduceBasis:=reduceBasis, clearDenominators:=clearDenominators, extraInfo:=true);
+				//ChangeUniverse(~gen, Pa);
+				allHodge[<k,alpha>] := gen;
+				allExtra[<k,alpha>] := [OGe, fI_kMinus1, derGenI_kMinus1];
+			else
+				gen := HodgeIdealWithData_branch(f, k, alpha, rho_to_OGeExp, allRhos, maxContact : reduceBasis:=reduceBasis, clearDenominators:=clearDenominators, extraInfo:=false);
+				//ChangeUniverse(~gen, Pa);
+				allHodge[<k,alpha>] := gen;
+			end if;
 		end for;
 	end for;
 	
@@ -591,7 +569,11 @@ intrinsic HodgeIdeals_branch(f::RngMPolLocElt, kMax::RngIntElt : reduceBasis:=tr
 	//results := [ results[i] : i in [1..#results] |
 	//	i eq #results or ideals[i] notsubset ideals[i+1]];
 	
-	return results;
+	if extraInfo then
+		return results, allExtra;
+	else
+		return results;
+	end if;
 	
 	//chosen := [false : i in [1..#results]];
 	//ideal := Pa;

@@ -15,10 +15,9 @@ Q := RationalField();
 //SetProfile(true);
 printBranchData         := false;
 printDiagramsSideBySide := true;
-//NND_QH                  := false; // Newton non-degenerate or quasihomogeneous
-//branch                  := true;
-printIntegralClosure    := false;
 printMonomialsInMaxCont := false;
+extraInfo               := false;
+printIntegralClosure    := false;
 printHodge              := true;
 quitOnFinish            := true;
 
@@ -63,6 +62,51 @@ printf "\n";
 //prt:=procedure(L)printf"[";for i->l in L do printf"%o%o",&cat Split(Sprintf("%o",l),"*"),i lt#L select", "else"";end for;printf"]";end procedure;
 //prt:=procedure(L)printf"[";for i->l in L do printf"%o%o",&cat Split(Sprintf("%o",l),"*^"),i lt#L select", "else"";end for;printf"]";end procedure;
 prt:=procedure(L)for i->l in L do printf"%o%o",&cat Split(Sprintf("%o",l),"*^ "),i lt#L select", "else"";end for;end procedure;
+
+function substringSubstitution(string, substring, substitute)
+	newString := "";
+	n := #string;
+	l := #substring;
+	i := 1;
+	while i le (n-l+1) do
+		if string[i..(i+l-1)] eq substring then
+			newString cat:= substitute;
+			i +:= l;
+		else
+			newString cat:= string[i];
+			i +:= 1;
+		end if;
+	end while;
+	newString cat:= string[i..n];
+	return newString;
+end function;
+
+procedure prt2Impl(prefix, L, maxContact)
+	printf prefix;
+	if printMonomialsInMaxCont then
+		S, extra := MonomialSequence(L, maxContact);
+		//printf"[";
+		for i->l in S do
+			string := Sprintf("%o",l);
+			string := &cat Split(string,"*");
+			string := substringSubstitution(string, "x^", "x");
+			string := substringSubstitution(string, "y^", "y");
+			string := substringSubstitution(string, "a^", "a");
+			printf "%o%o", string, i lt#S select", "else"";
+		end for;
+		//printf"]";
+		printf"\n";
+		if #extra gt 0 then
+			for i->g in extra do
+				//printf "g%o= %o\n", i, g;
+				printf "g%o= ", i; prt([g]); printf "\n";
+			end for;
+			printf "\n";
+		end if;
+	else
+		prt(L); printf "\n";
+	end if;
+end procedure;
 
 if printBranchData then
 	semigroup := SemiGroup(f);
@@ -139,18 +183,34 @@ end if;
 
 
 if NND_QH then
-	h_NND_QH := HodgeIdeals_NND_QH(f, kMax);
+	if extraInfo then
+		h_NND_QH, extra := HodgeIdeals_NND_QH(f, kMax : reduceBasis:=true, clearDenominators:=true, extraInfo:=true);
+	else
+		h_NND_QH := HodgeIdeals_NND_QH(f, kMax : reduceBasis:=true, clearDenominators:=true, extraInfo:=false);
+	end if;
 	h := h_NND_QH;
+	
+	Pa := Universe(h[1][3]);
+	maxContact := [Pa| Evaluate(h, [x,y]) : h in MaxContactElements(f) cat [f]];
+	prt2 := procedure(prefix,L)prt2Impl(prefix,L,maxContact);end procedure;
 	if printHodge then
 		kLast := 0;
 		for tup in h_NND_QH do
 			k, alpha, I := Explode(tup);
 			if k ne kLast then print "---"; end if;
-			printf "%-16o", Sprintf("I_%o(f^%o): ", k, alpha);
-			prt(I); printf "\n";
+			//printf "%-16o", Sprintf("I_%o(f^%o): ", k, alpha);
+			//prt(I); printf "\n";
+			prt2(Sprintf("%-16o",Sprintf("I_%o(f^%o): ",k,alpha)), I);
+			
 			//h_discard := HodgeIdeal_NND_QH(f, k, alpha);
 			//print I eq ChangeUniverse(h_discard, Universe(I));
 			//printf "\n";
+			if extraInfo then
+				prt2("OGe:            ", extra[<k,alpha>][1]);
+				prt2("fIkMinus1:      ", extra[<k,alpha>][2]);
+				prt2("derGenIkMinus1: ", extra[<k,alpha>][3]);
+				printf "\n";
+			end if;
 			
 			if printIntegralClosure then
 				Pa := Universe(I);
@@ -179,6 +239,9 @@ if NND_QH then
 		h_branch := HodgeIdeals_branch(f, kMax);
 		if #h_NND_QH ne #h_branch then
 			printf "false: different number of ideals\n\n";
+		Pa := Universe(h[1][3]);
+		maxContact := [Pa| Evaluate(h, [x,y]) : h in MaxContactElements(f) cat [f]];
+		prt2 := procedure(prefix,L)prt2Impl(prefix,L,maxContact);end procedure;
 		else
 			equal := true;
 			for i in [1..#h_branch] do
@@ -197,29 +260,42 @@ if NND_QH then
 		end if;
 	end if;
 else
-	h_branch := HodgeIdeals_branch(f, kMax : reduceBasis:=true);
+	if extraInfo then
+		h_branch, extra := HodgeIdeals_branch(f, kMax : reduceBasis:=true, clearDenominators:=true, extraInfo:=true);
+	else
+		h_branch := HodgeIdeals_branch(f, kMax : reduceBasis:=true, clearDenominators:=true, extraInfo:=false);
+	end if;
 	h := h_branch;
+	
+	Pa := Universe(h[1][3]);
+	maxContact := [Pa| Evaluate(h, [x,y]) : h in MaxContactElements(f) cat [f]];
+	prt2 := procedure(prefix,L)prt2Impl(prefix,L,maxContact);end procedure;
 	if printHodge then
-		Pa := Universe(h_branch[1][3]);
-		maxContact := [Pa| Evaluate(h, [x,y]) : h in MaxContactElements(f) cat [f]];
 		kLast := 0;
 		for tup in h_branch do
 			k, alpha, I := Explode(tup);
-			if k ne kLast then print "\n===================="; end if;
-			printf "%-16o", Sprintf("I_%o(f^%o): ", k, alpha);
-			if printMonomialsInMaxCont then
-				S, extra := MonomialSequence(I, maxContact);
-				printf"[";for i->l in S do printf"%o%o",&cat Split(Sprintf("%o",l),"*"),i lt#S select", "else"";end for;printf"]";printf"\n";
-				if #extra gt 0 then
-					for i->g in extra do
-						printf "g%o= %o\n", i, g;
-					end for;
-					printf "\n";
-				end if;
-			else
-				prt(I); printf "\n";
-			end if;
+			if k ne kLast then print "---";; end if;
+			//printf "%-16o", Sprintf("I_%o(f^%o): ", k, alpha);
+			//if printMonomialsInMaxCont then
+			//	S, extra := MonomialSequence(I, maxContact);
+			//	printf"[";for i->l in S do printf"%o%o",&cat Split(Sprintf("%o",l),"*"),i lt#S select", "else"";end for;printf"]";printf"\n";
+			//	if #extra gt 0 then
+			//		for i->g in extra do
+			//			printf "g%o= %o\n", i, g;
+			//		end for;
+			//		printf "\n";
+			//	end if;
+			//else
+			//	prt(I); printf "\n";
+			//end if;
+			prt2(Sprintf("%-16o",Sprintf("I_%o(f^%o): ",k,alpha)), I);
 			
+			if extraInfo then
+				prt2("OGe:            ", extra[<k,alpha>][1]);
+				prt2("fIkMinus1:      ", extra[<k,alpha>][2]);
+				prt2("derGenIkMinus1: ", extra[<k,alpha>][3]);
+				printf "\n";
+			end if;
 			
 			if printIntegralClosure then
 				Pa := Universe(I);
